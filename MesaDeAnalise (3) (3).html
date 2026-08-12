@@ -398,7 +398,7 @@
             fgts: { nome: 'FGTS', modalidades: ['FGTS'] },
             consignado: { nome: 'Consignado Privado', modalidades: ['Consignado Privado'] },
             inss: { nome: 'INSS', modalidades: ['INSS'] },
-            siape: { nome: 'SIAPE', modalidades: ['SIAPE'] },
+            siape: { nome: 'SIAPE', modalidades: ['SIAPE'], status: ['Análise mesa', 'Aguardando averbação'] },
             convenios: {
                 nome: 'Convênios',
                 modalidades: [
@@ -891,7 +891,7 @@
             for (const [key, fila] of Object.entries(FILAS)) {
                 const body = {
                     tipoPeriodo: 'criacao', page: 1, pageSize: 1,
-                    status: ['Análise mesa'], modalidade: fila.modalidades,
+                    status: fila.status || ['Análise mesa'], modalidade: fila.modalidades,
                     tipoCredito: Array.from(state.tipoCreditoPorFila[key]),
                     startDate: document.getElementById('dataInicio').value,
                     endDate: document.getElementById('dataFim').value,
@@ -959,7 +959,7 @@
             const fila = FILAS[filaKey];
             return {
                 tipoPeriodo: 'criacao', page, pageSize: 40,
-                status: ['Análise mesa'],
+                status: fila.status || ['Análise mesa'],
                 modalidade: fila.modalidades,
                 tipoCredito: Array.from(state.tipoCreditoPorFila[filaKey]),
                 startDate: dataInicio, endDate: dataFim,
