@@ -398,7 +398,7 @@
             fgts: { nome: 'FGTS', modalidades: ['FGTS'] },
             consignado: { nome: 'Consignado Privado', modalidades: ['Consignado Privado'] },
             inss: { nome: 'INSS', modalidades: ['INSS'] },
-            siape: { nome: 'SIAPE', modalidades: ['SIAPE'] },
+            siape: { nome: 'SIAPE', modalidades: ['SIAPE'], status: ['Análise mesa', 'Aguardando averbação'] },
             convenios: {
                 nome: 'Convênios',
                 modalidades: [
@@ -461,6 +461,19 @@
         const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwkMTACPSrxNMe3DAP83M0QW2DoalO4nj-TvXZ8sVKZmiHnwva-mx6l3IE26eOEEWUn3g/exec';
         function appsScriptUrl() { return APPS_SCRIPT_URL; }
 
+        // O Apps Script as vezes leva mais de um minuto pra responder. Sem teto de tempo,
+        // a tela fica presa em silencio. Aqui abortamos e deixamos o catch de cada chamada
+        // seguir com o ultimo valor conhecido.
+        async function fetchComTimeout(url, opcoes = {}, ms = 15000) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), ms);
+            try {
+                return await fetch(url, { ...opcoes, signal: controller.signal });
+            } finally {
+                clearTimeout(timeoutId);
+            }
+        }
+
         // URL fixa da página de detalhe da proposta — não exposta na interface
         const BASE_URL_DETALHE = 'https://portal.soupresenca.com.br/propostas/propostas-card-list/detalhe/{id}/cliente';
 
@@ -488,7 +501,7 @@
             const url = appsScriptUrl();
             if (!url) return;
             try {
-                const res = await fetch(url, { method: 'GET' });
+                const res = await fetchComTimeout(url, { method: 'GET' });
                 const json = await res.json();
                 if (json.ok) {
                     const mapa = {};
@@ -505,7 +518,7 @@
             const url = appsScriptUrl();
             if (!url) return;
             try {
-                const res = await fetch(`${url}?aba=etiquetas`, { method: 'GET' });
+                const res = await fetchComTimeout(`${url}?aba=etiquetas`, { method: 'GET' });
                 const json = await res.json();
                 if (json.ok) {
                     const mapa = {};
@@ -767,11 +780,20 @@
 
             // Atualização automática periódica: planilha de "em análise" + lista de propostas + contagem por fila + etiquetas.
             // "silencioso=true" evita mostrar o spinner de carregamento, para não interromper quem está lendo.
+            let refreshEmAndamento = false;
             setInterval(async () => {
-                await carregarEmAnalise();
-                await buscarPropostas(true);
-                carregarContagensFilas();
-                carregarEtiquetas();
+                // Se o ciclo anterior ainda nao terminou (planilha lenta), pula esta rodada.
+                // Sem isso as chamadas ao Apps Script se acumulam e a lentidao vira travamento.
+                if (refreshEmAndamento) return;
+                refreshEmAndamento = true;
+                try {
+                    await carregarEmAnalise();
+                    await buscarPropostas(true);
+                    await carregarContagensFilas();
+                    await carregarEtiquetas();
+                } finally {
+                    refreshEmAndamento = false;
+                }
             }, 30000);
         }
 
@@ -891,7 +913,7 @@
             for (const [key, fila] of Object.entries(FILAS)) {
                 const body = {
                     tipoPeriodo: 'criacao', page: 1, pageSize: 1,
-                    status: ['Análise mesa'], modalidade: fila.modalidades,
+                    status: fila.status || ['Análise mesa'], modalidade: fila.modalidades,
                     tipoCredito: Array.from(state.tipoCreditoPorFila[key]),
                     startDate: document.getElementById('dataInicio').value,
                     endDate: document.getElementById('dataFim').value,
@@ -940,7 +962,9 @@
                 // Igual ao filtro por fila, mas sem o campo "modalidade" — retorna todos os produtos
                 return {
                     tipoPeriodo: 'criacao', page, pageSize: 40,
-                    status: ['Análise mesa'],
+                    // Uniao dos status de todas as filas, senao o SIAPE em "Aguardando averbacao"
+                    // apareceria na aba SIAPE mas sumiria aqui.
+                    status: [...new Set(Object.values(FILAS).flatMap(f => f.status || ['Análise mesa']))],
                     startDate: dataInicio, endDate: dataFim,
                     pendencias: Array.from(state.pendenciasSelecionadas)
                 };
@@ -959,7 +983,7 @@
             const fila = FILAS[filaKey];
             return {
                 tipoPeriodo: 'criacao', page, pageSize: 40,
-                status: ['Análise mesa'],
+                status: fila.status || ['Análise mesa'],
                 modalidade: fila.modalidades,
                 tipoCredito: Array.from(state.tipoCreditoPorFila[filaKey]),
                 startDate: dataInicio, endDate: dataFim,
