@@ -1,0 +1,2101 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mesa de Análise - Presença</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&family=Poppins:wght@700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .code-font { font-family: 'Fira Code', monospace; }
+        ::-webkit-scrollbar { height: 10px; width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f4; }
+        ::-webkit-scrollbar-thumb { background: #d4d4d4; border-radius: 4px; }
+        select, input { transition: border-color .15s ease; }
+        select:focus, input:focus { outline: none; border-color: #E35205; box-shadow: 0 0 0 3px rgba(227,82,5,.12); }
+        .produto-btn { transition: all .15s ease; }
+        .produto-btn.active { background: #E35205; color: white; border-color: #E35205; }
+        .produto-btn.active .count-badge { background: rgba(255,255,255,.25); color: white; }
+        .produto-btn:not(.active):hover { border-color: #E35205; color: #E35205; }
+
+        /* Tooltip escuro estilizado para os botões de ícone */
+        .icon-btn { position: relative; }
+        .logo-presenca { font-family: 'Poppins', 'Inter', sans-serif; font-weight: 800; letter-spacing: -0.01em; }
+        .icon-btn::after {
+            content: attr(data-tooltip);
+            position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+            background: #1c1917; color: #fff; font-size: 12px; font-weight: 600;
+            padding: 6px 10px; border-radius: 8px; white-space: nowrap;
+            opacity: 0; pointer-events: none; transition: opacity .12s ease;
+            z-index: 30;
+        }
+        .icon-btn::before {
+            content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+            border: 5px solid transparent; border-bottom-color: #1c1917;
+            opacity: 0; pointer-events: none; transition: opacity .12s ease; z-index: 30;
+        }
+        .icon-btn:hover::after, .icon-btn:hover::before { opacity: 1; }
+        .row-proposta { transition: background-color .12s ease; cursor: pointer; }
+        .row-proposta:hover { background-color: #fafaf9; }
+        .spin { animation: spin .8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        details > summary { list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+
+        /* ===== MODO NOTURNO (tom azul-marinho, igual ao portal) ===== */
+        html.dark body { background-color: #0a0e1a; }
+        html.dark .bg-stone-50 { background-color: #0a0e1a !important; }
+        html.dark .bg-white { background-color: #131a2c !important; }
+        html.dark .bg-stone-100 { background-color: #1b2338 !important; }
+        html.dark .bg-stone-100\/50, html.dark .bg-stone-50\/50 { background-color: #131a2c !important; }
+        html.dark .border-stone-100 { border-color: #232b42 !important; }
+        html.dark .border-stone-200 { border-color: #2a3350 !important; }
+        html.dark .border-stone-300 { border-color: #2a3350 !important; }
+        html.dark .bg-stone-200 { background-color: #2a3350 !important; }
+        html.dark .text-stone-900 { color: #f8fafc !important; }
+        html.dark .text-stone-800 { color: #f1f5f9 !important; }
+        html.dark .text-stone-700 { color: #e2e8f0 !important; }
+        html.dark .text-stone-600 { color: #cbd5e1 !important; }
+        html.dark .text-stone-500 { color: #94a3b8 !important; }
+        html.dark .text-stone-400 { color: #64748b !important; }
+        html.dark input, html.dark select, html.dark textarea { background-color: #131a2c !important; color: #f1f5f9 !important; border-color: #2a3350 !important; }
+        html.dark .row-proposta:hover { background-color: #1b2338 !important; }
+        html.dark ::-webkit-scrollbar-track { background: #131a2c; }
+        html.dark .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0,0,0,.4) !important; }
+    </style>
+</head>
+<body class="bg-stone-50 font-sans text-stone-800 antialiased">
+
+    <!-- ============ TELA DE LOGIN ============ -->
+    <div id="loginGate" class="min-h-screen flex items-center justify-center px-6">
+        <div class="w-full max-w-md">
+            <div class="text-center mb-8">
+                <span class="text-4xl logo-presenca text-[#E35205]">Presença</span>
+                <p class="text-stone-500 mt-2">Mesa de Análise</p>
+            </div>
+            <div class="bg-white border border-stone-200 rounded-2xl p-8 shadow-sm">
+                <div class="mb-5">
+                    <label class="text-xs font-bold text-stone-400 uppercase tracking-wider block mb-1.5">Login</label>
+                    <input id="loginInput" type="text" class="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm">
+                </div>
+                <div class="mb-6">
+                    <label class="text-xs font-bold text-stone-400 uppercase tracking-wider block mb-1.5">Senha</label>
+                    <input id="senhaInput" type="password" class="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm" onkeydown="if(event.key==='Enter') doLogin()">
+                </div>
+                <button onclick="doLogin()" id="btnLogin" class="w-full py-3 bg-[#E35205] text-white rounded-lg text-sm font-semibold hover:bg-[#c44503] transition-colors">Entrar</button>
+                <div id="outLogin" class="mt-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ APP PRINCIPAL ============ -->
+    <div id="app" class="hidden">
+        <header id="headerApp" class="bg-white sticky top-0 z-40 border-b border-stone-200 shadow-sm">
+            <div class="max-w-[1400px] mx-auto px-6 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-8">
+                    <span onclick="voltarParaFila()" class="text-3xl logo-presenca text-[#E35205] cursor-pointer">Presença</span>
+                    <nav class="hidden lg:flex items-center gap-6 text-sm font-medium text-stone-600">
+                        <a href="#" onclick="voltarParaFila()" id="navMesaAnalise" class="flex items-center gap-1.5 text-stone-600 hover:text-[#E35205] transition-colors">
+                            <svg width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Z"></path></svg>
+                            Mesa de Análise
+                        </a>
+                        <a href="#" onclick="abrirDashboardAtuacao()" id="navDashboardAtuacao" class="hidden items-center gap-1.5 hover:text-[#E35205] transition-colors">
+                            <svg width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M224,200h-8V40a8,8,0,0,0-8-8H152a8,8,0,0,0-8,8V72H96a8,8,0,0,0-8,8v40H48a8,8,0,0,0-8,8v72H32a8,8,0,0,0,0,16H224a8,8,0,0,0,0-16Z"></path></svg>
+                            Dashboard de Atuação
+                        </a>
+                    </nav>
+                </div>
+                <div class="flex items-center gap-4">
+                    <button id="btnModoNoturno" onclick="alternarModoNoturno()" class="text-stone-500 hover:text-[#E35205] transition-colors" title="Alternar modo noturno">
+                        <svg id="iconeSol" width="19" height="19" fill="currentColor" viewBox="0 0 256 256"><path d="M120,40V16a8,8,0,0,1,16,0V40a8,8,0,0,1-16,0Zm72,88a64,64,0,1,1-64-64A64.07,64.07,0,0,1,192,128Zm-16,0a48,48,0,1,0-48,48A48.05,48.05,0,0,0,176,128ZM58.34,69.66A8,8,0,0,0,69.66,58.34l-16-16A8,8,0,0,0,42.34,53.66Zm0,116.68-16,16a8,8,0,0,0,11.32,11.32l16-16a8,8,0,0,0-11.32-11.32ZM192,72a8,8,0,0,0,5.66-2.34l16-16a8,8,0,0,0-11.32-11.32l-16,16A8,8,0,0,0,192,72Zm5.66,114.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32-11.32ZM48,128a8,8,0,0,0-8-8H16a8,8,0,0,0,0,16H40A8,8,0,0,0,48,128Zm80,80a8,8,0,0,0-8,8v24a8,8,0,0,0,16,0V216A8,8,0,0,0,128,208Zm112-88H216a8,8,0,0,0,0,16h24a8,8,0,0,0,0-16Z"></path></svg>
+                        <svg id="iconeLua" width="19" height="19" fill="currentColor" viewBox="0 0 256 256" class="hidden"><path d="M233.54,142.23a8,8,0,0,0-8-2,88.08,88.08,0,0,1-109.8-109.8,8,8,0,0,0-10-10,104.84,104.84,0,0,0-52.91,37A104,104,0,0,0,136,224a103.09,103.09,0,0,0,62.52-20.88,104.84,104.84,0,0,0,37-52.91A8,8,0,0,0,233.54,142.23ZM188.9,190.34A88,88,0,0,1,65.66,67.11a89,89,0,0,1,31.4-26A106,106,0,0,0,96,56,104.11,104.11,0,0,0,200,160a106,106,0,0,0,14.92-1.06A89,89,0,0,1,188.9,190.34Z"></path></svg>
+                    </button>
+                    <div id="separadorHeader" class="h-6 w-px bg-stone-200"></div>
+                    <span id="usuarioLogado" class="text-sm text-stone-500 hidden md:inline"></span>
+                    <button onclick="doLogout()" id="btnContaUsuario" class="flex items-center gap-1.5 text-stone-500 hover:text-red-500 transition-colors text-sm font-semibold" title="Sair">
+                        <svg width="18" height="18" fill="currentColor" viewBox="0 0 256 256"><path d="M230.92,212c-15.23-26.33-38.7-45.21-66.09-54.16a72,72,0,1,0-73.66,0C63.78,166.78,40.31,185.66,25.08,212a8,8,0,1,0,13.84,8c18.84-32.56,52.14-52,89.08-52s70.24,19.44,89.08,52a8,8,0,1,0,13.84-8ZM72,96a56,56,0,1,1,56,56A56.06,56.06,0,0,1,72,96Z"></path></svg>
+                        Sair
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-[1400px] mx-auto px-6 py-8">
+            <div class="flex gap-6 items-start">
+
+                <!-- ===== SIDEBAR FIXA: COLABORADORES POR FILA (restrito) ===== -->
+                <aside id="sidebarColaboradores" class="hidden w-72 shrink-0 sticky top-24 bg-white border border-stone-200 rounded-2xl shadow-sm flex-col max-h-[calc(100vh-140px)]">
+                    <div class="px-4 py-3.5 border-b border-stone-100">
+                        <div class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-orange-50 text-[#E35205] font-semibold text-sm">
+                            <svg width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M117.25,157.92a60,60,0,1,0-66.5,0A95.83,95.83,0,0,0,3.53,195.63a8,8,0,1,0,13.4,8.74,80,80,0,0,1,134.14,0,8,8,0,1,0,13.4-8.74A95.83,95.83,0,0,0,117.25,157.92ZM40,108a44,44,0,1,1,44,44A44.05,44.05,0,0,1,40,108Zm210.14,98.7a8,8,0,0,1-11.07-2.33A79.83,79.83,0,0,0,172,168a8,8,0,0,1,0-16,44,44,0,1,0-16.34-84.87,8,8,0,1,1-5.94-14.85,60,60,0,0,1,55.53,105.64,95.83,95.83,0,0,1,47.22,37.71A8,8,0,0,1,250.14,206.7Z"></path></svg>
+                            Colaboradores por Fila
+                        </div>
+                    </div>
+                    <div class="px-5 pt-3 flex items-center justify-between">
+                        <span class="text-xs font-bold text-stone-400 uppercase tracking-wider">Em análise agora</span>
+                        <button onclick="carregarColaboradoresPorFila()" id="btnCarregarColab" class="text-stone-400 hover:text-[#E35205] transition-colors" title="Atualizar">
+                            <svg width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M197.67,186.37a8,8,0,0,1,0,11.29C196.58,198.75,178.91,216,144,216c-37.4,0-64.53-21.24-80-40.06V193a8,8,0,0,1-16,0V152a8,8,0,0,1,8-8h41a8,8,0,0,1,0,16H80.37c14,17.66,35.85,32,63.63,32,25.9,0,39.14-13.66,42.6-16.9A8,8,0,0,1,197.67,186.37ZM40,80c3.46-3.24,16.7-16.9,42.6-16.9,27.78,0,49.66,14.34,63.63,32H130a8,8,0,0,0,0,16h41a8,8,0,0,0,8-8V63a8,8,0,0,0-16,0v17.06C147.53,61.24,120.4,40,83,40,48.09,40,30.42,57.25,29.33,58.34a8,8,0,0,0,11.34,11.3Z"></path></svg>
+                        </button>
+                    </div>
+                    <div id="colabResultado" class="px-5 py-3 text-sm text-stone-400 overflow-y-auto flex-1">Clique no ícone de atualizar para carregar a distribuição atual.</div>
+                </aside>
+
+                <!-- ===== CONTEÚDO PRINCIPAL ===== -->
+                <div class="flex-1 min-w-0">
+
+            <div id="viewFila">
+
+            <div class="mb-6">
+                <h1 class="text-2xl font-extrabold text-stone-900 tracking-tight">Fila de Propostas — Análise Mesa</h1>
+            </div>
+
+            <!-- Navegação de filas (horizontal, com contador de propostas) -->
+            <nav id="produtoNav" class="flex flex-wrap gap-3 mb-6"></nav>
+
+                    <!-- Aviso CORS -->
+                    <div id="corsWarning" class="hidden bg-red-50 border border-red-200 rounded-xl p-5 mb-6 flex items-start gap-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="#dc2626" viewBox="0 0 256 256" class="shrink-0 mt-0.5"><path d="M236.8,188.09,149.35,36.22h0a24.76,24.76,0,0,0-42.7,0L19.2,188.09a23.51,23.51,0,0,0,0,23.72A24.35,24.35,0,0,0,40.55,224h174.9a24.35,24.35,0,0,0,21.33-12.19A23.51,23.51,0,0,0,236.8,188.09ZM120,104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm8,88a12,12,0,1,1,12-12A12,12,0,0,1,140,172Z"></path></svg>
+                        <div class="text-sm text-red-800 leading-relaxed">
+                            <strong>A requisição falhou antes de sair do navegador (erro de rede/CORS).</strong> A API pode só liberar chamadas vindas do domínio oficial do portal. Peça ao backend para liberar a origem, ou rode este arquivo através de um proxy local.
+                        </div>
+                    </div>
+
+                    <!-- Filtros (visíveis apenas para quem pode editá-los) -->
+                    <div class="flex flex-wrap items-end gap-3 mb-5">
+                        <div id="blocoFiltrosRestritos" class="flex flex-wrap items-end gap-3">
+                            <div>
+                                <label class="text-xs font-bold text-stone-400 uppercase tracking-wider block mb-1">Data início</label>
+                                <input id="dataInicio" type="date" class="border border-stone-200 rounded-lg px-3 py-2 text-sm code-font">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-stone-400 uppercase tracking-wider block mb-1">Data fim</label>
+                                <input id="dataFim" type="date" class="border border-stone-200 rounded-lg px-3 py-2 text-sm code-font">
+                            </div>
+
+                            <!-- Pendências -->
+                            <details class="relative" id="detPendencias">
+                                <summary class="cursor-pointer border border-stone-200 rounded-lg px-3 py-2 text-sm font-medium text-stone-600 bg-white flex items-center gap-2">
+                                    Pendências <span id="countPendencias" class="text-xs bg-stone-100 px-1.5 rounded-full"></span>
+                                </summary>
+                                <div class="absolute z-20 mt-2 bg-white border border-stone-200 rounded-xl shadow-lg p-3 w-64" id="pendenciasBox"></div>
+                            </details>
+
+                            <!-- Tipo de crédito (por fila) -->
+                            <details class="relative" id="detTipoCredito">
+                                <summary class="cursor-pointer border border-stone-200 rounded-lg px-3 py-2 text-sm font-medium text-stone-600 bg-white flex items-center gap-2">
+                                    Tipo de Crédito <span id="countTipoCredito" class="text-xs bg-stone-100 px-1.5 rounded-full"></span>
+                                </summary>
+                                <div class="absolute z-20 mt-2 bg-white border border-stone-200 rounded-xl shadow-lg p-3 w-56" id="tipoCreditoBox"></div>
+                            </details>
+
+                            <button id="btnAplicarFiltros" onclick="if(!podeEditarFiltros())return; state.paginaPorFila[state.filaAtiva] = 1; state.pageCountPorFila[state.filaAtiva] = null; buscarPropostas(); carregarContagensFilas();" class="px-5 py-2 bg-[#E35205] text-white rounded-lg text-sm font-semibold hover:bg-[#c44503] transition-colors">Aplicar filtros</button>
+
+                            <button id="btnTodasFilas" onclick="buscarTodasAsFilas()" class="px-4 py-2 bg-white border border-stone-200 rounded-lg text-sm font-semibold text-stone-600 hover:border-[#E35205] hover:text-[#E35205] transition-colors">Buscar em todas as filas</button>
+                        </div>
+
+                        <div class="ml-auto">
+                            <label class="text-xs font-bold text-stone-400 uppercase tracking-wider block mb-1">Buscar por ID</label>
+                            <div class="flex items-center gap-2">
+                                <div class="relative">
+                                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 256 256" class="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400"><path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"></path></svg>
+                                    <input id="buscaId" type="text" placeholder="ID ou texto..." onkeydown="if(event.key==='Enter') buscarPorId();" class="pl-8 pr-3 py-2 border border-stone-200 rounded-lg text-sm w-44 code-font">
+                                </div>
+                                <button onclick="buscarPorId()" class="px-3 py-2 bg-stone-800 hover:bg-stone-700 text-white rounded-lg text-sm font-semibold transition-colors shrink-0">Buscar</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lista de propostas -->
+                    <div class="bg-white border border-stone-200 rounded-2xl shadow-sm overflow-hidden">
+                        <div class="px-5 py-4 border-b border-stone-100 flex items-center justify-between flex-wrap gap-3">
+                            <div class="flex items-center gap-3">
+                                <h2 id="tituloLista" class="font-bold text-stone-800"></h2>
+                                <span id="contagemLista" class="text-xs font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-600"></span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button id="btnPuxarProposta" onclick="concluirEIrParaProxima()" class="inline-flex items-center gap-2 px-4 py-2 bg-[#E35205] hover:bg-[#c44503] text-white rounded-lg text-sm font-semibold transition-colors">
+                                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M181.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L164.69,128,98.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,181.66,133.66Z"></path></svg>
+                                    Puxar Proposta
+                                </button>
+                                <button id="btnSairDaFila" onclick="sairDaFila()" class="inline-flex items-center gap-2 px-4 py-2 bg-white border border-stone-200 text-stone-600 hover:border-red-300 hover:text-red-600 rounded-lg text-sm font-semibold transition-colors">
+                                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M124,216a12,12,0,0,1-12,12H48a12,12,0,0,1-12-12V40A12,12,0,0,1,48,28h64a12,12,0,0,1,0,24H60V204h52A12,12,0,0,1,124,216Zm108.49-96.49-40-40a12,12,0,0,0-17,17L195,116H100a12,12,0,0,0,0,24h95l-19.51,19.51a12,12,0,0,0,17,17l40-40A12,12,0,0,0,232.49,119.51Z"></path></svg>
+                                    Sair da Fila
+                                </button>
+                            </div>
+                        </div>
+                        <div id="listaBody" class="divide-y divide-stone-100"></div>
+                        <div id="paginacao" class="px-5 py-3 border-t border-stone-100 flex items-center justify-between text-sm"></div>
+                    </div>
+
+                </div>
+            <!-- /viewFila -->
+
+            <!-- ===== VIEW: DASHBOARD DE ATUAÇÃO (restrito) ===== -->
+            <div id="viewDashboardAtuacao" class="hidden">
+                <div class="flex items-center justify-between flex-wrap gap-4 mb-6">
+                    <div>
+                        <h1 class="text-2xl font-extrabold text-stone-900 tracking-tight">Dashboard de Atuação</h1>
+                        <p class="text-stone-500 text-sm mt-1">Compliance validado, cancelamentos, pendências e tempo médio de atuação, por analista.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="voltarParaFila()" class="px-4 py-2 text-sm font-semibold text-stone-500 hover:text-stone-800 transition-colors">← Voltar à fila</button>
+                        <button onclick="carregarDashboardAtuacao()" class="inline-flex items-center gap-2 px-4 py-2 bg-stone-100 hover:bg-stone-200 rounded-lg text-sm font-semibold text-stone-700 transition-colors">
+                            <svg width="14" height="14" fill="currentColor" viewBox="0 0 256 256"><path d="M197.67,186.37a8,8,0,0,1,0,11.29C196.58,198.75,178.91,216,144,216c-37.4,0-64.53-21.24-80-40.06V193a8,8,0,0,1-16,0V152a8,8,0,0,1,8-8h41a8,8,0,0,1,0,16H80.37c14,17.66,35.85,32,63.63,32,25.9,0,39.14-13.66,42.6-16.9A8,8,0,0,1,197.67,186.37ZM40,80c3.46-3.24,16.7-16.9,42.6-16.9,27.78,0,49.66,14.34,63.63,32H130a8,8,0,0,0,0,16h41a8,8,0,0,0,8-8V63a8,8,0,0,0-16,0v17.06C147.53,61.24,120.4,40,83,40,48.09,40,30.42,57.25,29.33,58.34a8,8,0,0,0,11.34,11.3Z"></path></svg>
+                            Atualizar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filtro de data -->
+                <div class="flex flex-wrap items-end gap-3 mb-5">
+                    <div>
+                        <label class="text-xs font-bold text-stone-400 uppercase tracking-wider block mb-1">Data início</label>
+                        <input id="dashDataInicio" type="date" class="border border-stone-200 rounded-lg px-3 py-2 text-sm code-font">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-stone-400 uppercase tracking-wider block mb-1">Data fim</label>
+                        <input id="dashDataFim" type="date" class="border border-stone-200 rounded-lg px-3 py-2 text-sm code-font">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-stone-400 uppercase tracking-wider block mb-1">Fila</label>
+                        <select id="dashFiltroFila" class="border border-stone-200 rounded-lg px-3 py-2 text-sm min-w-[180px]">
+                            <option value="">Todas as filas</option>
+                        </select>
+                    </div>
+                    <button onclick="carregarDashboardAtuacao()" class="px-5 py-2 bg-[#E35205] text-white rounded-lg text-sm font-semibold hover:bg-[#c44503] transition-colors">Aplicar filtro</button>
+                    <span class="text-xs text-stone-400">Filtra pela data/hora de conclusão da atuação.</span>
+                </div>
+
+                <div id="corpoDashboardAtuacao" class="text-sm text-stone-400">Clique em "Atualizar" para carregar os dados.</div>
+
+                <!-- Desempenho por analista -->
+                <div class="mt-10">
+                    <h2 class="text-lg font-extrabold text-stone-900 tracking-tight mb-1">Desempenho por Analista</h2>
+                    <p class="text-stone-500 text-sm mb-4">Selecione um analista para ver os números individuais.</p>
+                    <select id="selectAnalistaDashboard" onchange="renderPainelAnalista()" class="border border-stone-200 rounded-lg px-3 py-2 text-sm mb-5 min-w-[260px]">
+                        <option value="">Selecione um analista...</option>
+                    </select>
+                    <div id="painelAnalistaIndividual"></div>
+                </div>
+            </div>
+            <!-- /viewDashboardAtuacao -->
+
+                </div>
+            </div>
+        </main>
+
+
+
+        <!-- ===== MODAL: ADICIONAR OBSERVAÇÃO ===== -->
+        <div id="modalObservacao" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-6">
+            <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+                <h3 class="text-blue-600 font-bold text-lg mb-1">Adicionar observação</h3>
+                <p class="text-sm text-stone-600 mb-4">Descreva a observação da proposta <strong id="observacaoPropostaId"></strong>.</p>
+
+                <label class="text-xs font-bold text-stone-400 uppercase tracking-wider block mb-1">Observação</label>
+                <textarea id="textoObservacao" rows="4" placeholder="Digite a observação..." class="w-full border border-blue-300 rounded-lg px-3 py-2.5 text-sm mb-4 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none"></textarea>
+
+                <div id="outObservacao" class="mb-3"></div>
+
+                <div class="flex justify-end gap-3">
+                    <button onclick="fecharModalObservacao()" class="px-4 py-2 text-sm font-semibold text-stone-500 hover:text-stone-700">Voltar</button>
+                    <button id="btnConfirmarObservacao" onclick="confirmarObservacao()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors">Salvar observação</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== MODAL: PROPOSTA JÁ EM ANÁLISE POR OUTRO COLABORADOR ===== -->
+        <div id="modalBloqueado" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-6">
+            <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+                <div class="flex items-center gap-2.5 mb-1">
+                    <svg width="22" height="22" fill="#9333ea" viewBox="0 0 256 256"><path d="M208,80H176V56a48,48,0,0,0-96,0V80H48A16,16,0,0,0,32,96V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V96A16,16,0,0,0,208,80ZM96,56a32,32,0,0,1,64,0V80H96ZM208,208H48V96H208V208Z"></path></svg>
+                    <h3 class="text-purple-600 font-bold text-lg">Proposta em análise</h3>
+                </div>
+                <p id="msgModalBloqueado" class="text-sm text-stone-600 mb-5"></p>
+                <div class="flex justify-end">
+                    <button onclick="fecharModalBloqueado()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold transition-colors">Entendi</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== MODAL: CANCELAMENTO ===== -->
+        <div id="modalCancelamento" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-6">
+            <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+                <h3 class="text-red-600 font-bold text-lg mb-1">Cancelar proposta</h3>
+                <p class="text-sm text-stone-600 mb-4">Você tem certeza que deseja cancelar a proposta <strong id="cancelPropostaId"></strong>? Essa ação não poderá ser desfeita!</p>
+
+                <label class="text-xs font-bold text-stone-400 uppercase tracking-wider block mb-1">Motivo de cancelamento</label>
+                <select id="selectMotivoCancelamento" class="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm mb-4">
+                    <option value="">Carregando motivos...</option>
+                </select>
+
+                <label class="text-xs font-bold text-stone-400 uppercase tracking-wider block mb-1">Descrição</label>
+                <textarea id="descricaoCancelamento" rows="3" placeholder="Detalhe o motivo do cancelamento..." class="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm mb-4"></textarea>
+
+                <div id="outCancelamento" class="mb-3"></div>
+
+                <div class="flex justify-end gap-3">
+                    <button onclick="fecharModalCancelamento()" class="px-4 py-2 text-sm font-semibold text-stone-500 hover:text-stone-700">Voltar</button>
+                    <button id="btnConfirmarCancelamento" onclick="confirmarCancelamento()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors">Confirmar cancelamento</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== MODAL: PENDENCIAR PROPOSTA ===== -->
+        <div id="modalPendencia" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-6">
+            <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+                <h3 class="text-amber-500 font-bold text-lg mb-1">Pendenciar proposta</h3>
+                <p class="text-sm text-stone-600 mb-4">Descreva a observação da pendência da proposta <strong id="pendenciaPropostaId"></strong>.</p>
+
+                <label class="text-xs font-bold text-stone-400 uppercase tracking-wider block mb-1">Observação</label>
+                <textarea id="observacaoPendencia" rows="4" placeholder="Detalhe o que está pendente..." class="w-full border border-amber-300 rounded-lg px-3 py-2.5 text-sm mb-4 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"></textarea>
+
+                <div id="outPendencia" class="mb-3"></div>
+
+                <div class="flex justify-end gap-3">
+                    <button onclick="fecharModalPendencia()" class="px-4 py-2 text-sm font-semibold text-stone-500 hover:text-stone-700">Voltar</button>
+                    <button id="btnConfirmarPendencia" onclick="confirmarPendencia()" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-semibold transition-colors">Confirmar pendência</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== MODAL: CHECKLIST DA OPERAÇÃO ===== -->
+        <div id="modalChecklist" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-6">
+            <div class="bg-white rounded-2xl shadow-xl max-w-3xl w-full max-h-[85vh] flex flex-col">
+                <div class="px-6 py-5 border-b border-stone-100 flex items-center justify-between">
+                    <h3 class="text-xl font-bold text-stone-800 flex items-center gap-2">
+                        <svg width="20" height="20" fill="#E35205" viewBox="0 0 256 256"><path d="M200,32H163.74a32,32,0,0,0-59.48,0H56A16,16,0,0,0,40,48V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V48A16,16,0,0,0,200,32Zm-72,0a16,16,0,0,1,16,16H112A16,16,0,0,1,128,32Zm72,184H56V48H92.42A32.2,32.2,0,0,0,92,56v8a8,8,0,0,0,8,8h56a8,8,0,0,0,8-8V56a32.2,32.2,0,0,0-.42-8H200Z"></path></svg>
+                        Checklist da Operação
+                    </h3>
+                    <button onclick="fecharModalChecklist()" class="text-stone-400 hover:text-stone-700 text-2xl leading-none">&times;</button>
+                </div>
+                <div id="corpoModalChecklist" class="px-6 py-4 overflow-y-auto flex-1"></div>
+            </div>
+        </div>
+
+        <div id="modalEtapas" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-6">
+            <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[85vh] flex flex-col">
+                <div class="px-6 py-5 border-b border-stone-100 flex items-center justify-between">
+                    <h3 class="text-xl font-bold text-stone-800">Etapas da Proposta</h3>
+                    <button onclick="fecharModalEtapas()" class="text-stone-400 hover:text-stone-700 text-2xl leading-none">&times;</button>
+                </div>
+                <div id="corpoModalEtapas" class="px-6 py-4 overflow-y-auto flex-1"></div>
+                <div class="px-6 py-4 border-t border-stone-100 text-right">
+                    <button onclick="fecharModalEtapas()" class="text-sm font-bold text-[#E35205] hover:text-[#c44503]">Fechar</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // =====================================================================
+        // CONFIG: filas e modalidades correspondentes (extraídas do payload real)
+        // =====================================================================
+        const FILAS = {
+            fgts: { nome: 'FGTS', modalidades: ['FGTS'] },
+            consignado: { nome: 'Consignado Privado', modalidades: ['Consignado Privado'] },
+            inss: { nome: 'INSS', modalidades: ['INSS'] },
+            siape: { nome: 'SIAPE', modalidades: ['SIAPE'], status: ['Análise mesa', 'Aguardando averbação'] },
+            convenios: {
+                nome: 'Convênios',
+                modalidades: [
+                    "GOV SP - SPPREV","GOV SP - SEFAZ","GOV SP - MPESP","Pref de SBC","Embu das Artes","HSPM","IPRESB","Gov Minas","Gov MT","Gov SP","Gov GO","Pref Ananindeua","Pref Barueri","Pref Cotia","Pref Goiania","Praia Grande","Pref Sorocaba","Pref SP","Duque de Caxias","Pref RJ","Gov AL","Gov CE","Gov MA","Gov PI","Gov TO","IGEPREV","IPAM","IPMO","IPREM","TRT 15 CAMPINAS","Pref Aquiraz","Pref Aracruz","Belo Horizonte","Pref Cachoeirinha","Pref Cabedelo","Pref Cajamar","Pref Campina Grande","Pref Campinas","Pref Caucaia","Pref Joao Pessoa","Juazeiro do Norte","Pref Maceio","Pref Maua","Pref Navegantes","Pref Nova Lima","Pref Palmas","Pref Sobral","PREVIJUNO","Gov Parana","Pref Curitiba","Pref Maringa","Pref Porto Alegre","Pref Ponta Grossa","Pref Foz do Iguacu","Pref Medianeira","Pref Arapongas","Pref Pirai do Sul","Pref Planaltina","Pref Recife","Gov Amazonas","Gov Santa Catarina","Gov Paraiba","Pref Uberlandia","Pref Ribeirao Preto","Pref Campo Largo","Pref Ipatinga","Pref Sao Goncalo","Pref Serra","Pref Sorriso","Pref Varzea Grande","Pref Florianopolis","Pref Porto Velho","Pref Santo Andre","Pref Caldas Novas","Pref Itanhaem","Pref Piracicaba","Pref Governador Valadares","Pref Porto Nacional","Pref Londrina","Pref Natal","Pref Cariacica","Gov Rio de Janeiro","Gov Amapá","Gov RN","Compra de Dívida - Governo de Goiás","Compra de Dívida - Governo do Maranhão","Compra de Dívida - Prefeitura de Belo Horizonte","Compra de Dívida - Prefeitura de Mariana","Compra de Dívida - Governo do Acre","Compra de Dívida - Prefeitura de Blumenau","Pref Bauru","Pref Araraquara","Pref Juiz de Fora","Pref São Luiz","Pref Niterói","Pref Aguas Lindas","Gov Acre","Pref Blumenau","Pref Brasilandia MS","Pref Mariana","Pref Sao Jose dos Campos SP","Pref Guarulhos"
+                ]
+            }
+        };
+
+        const ICONES = {
+            fgts: '<path d="M240,104a16,16,0,0,1-16,16h-8v40a16,16,0,0,1-16,16H176a16,16,0,0,1-16-16V160H96v40a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V152.72c-9.62-6.85-16-18.31-16-31.72a40,40,0,0,1,40-40h.53A79.53,79.53,0,0,1,128,48a79.9,79.9,0,0,1,68.34,38.68C218.31,88.53,236,102.09,240,104ZM176,88a12,12,0,1,0,12,12A12,12,0,0,0,176,88Z"></path>',
+            consignado: '<path d="M232,224H208V96a8,8,0,0,0-8-8H160V40a8,8,0,0,0-8-8H56a8,8,0,0,0-8,8V224H24a8,8,0,0,0,0,16H232a8,8,0,0,0,0-16ZM64,48h80V224H64Zm128,176H160V104h32Z"></path>',
+            inss: '<path d="M230.92,212c-15.23-26.33-38.7-45.21-66.09-54.16a72,72,0,1,0-73.66,0C63.78,166.78,40.31,185.66,25.08,212a8,8,0,1,0,13.84,8c18.84-32.56,52.14-52,89.08-52s70.24,19.44,89.08,52a8,8,0,1,0,13.84-8ZM72,96a56,56,0,1,1,56,56A56.06,56.06,0,0,1,72,96Z"></path>',
+            siape: '<path d="M128,24,32,72v16H224V72Zm88,80H40v88H24v16H232V192H216ZM72,192H56V120H72Zm40,0H96V120h16Zm40,0H136V120h16Zm40,0H176V120h16Z"></path>',
+            convenios: '<path d="M188.6,116.09,133.65,71a8,8,0,0,0-10.24,0L68.51,116h0l-.13.11a48,48,0,0,0,60.29,74.83,48,48,0,0,0,60.06-74.71ZM128,53.4l45.79,37.87-.2.17L128.9,127a7.87,7.87,0,0,1-10.2,0l-44.5-35.55-.2-.17ZM128,178.14a32,32,0,0,1-23.9-53.24l19.2-15.75a24,24,0,0,0,9.4,0l19.2,15.75A32,32,0,0,1,128,178.14Z"></path>'
+        };
+
+        function svgIcon(key, cls = 'w-5 h-5') {
+            return `<svg class="${cls}" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 256 256">${ICONES[key] || ''}</svg>`;
+        }
+
+        const TODOS_TIPOS_CREDITO = ["Novo", "Refinanciamento", "Portabilidade", "Cartão RMC", "Cartão benefício", "Aumento", "Compra"];
+
+        // Mapa statusId -> nome da etapa (baseado nos status já observados no sistema)
+        const STATUS_MAP = {
+            1: 'Criada',
+            3: 'Aguardando assinaturas',
+            4: 'Análise mesa',
+            7: 'Cancelada',
+            8: 'Paga',
+            10: 'Aguardando Link Formalização',
+            11: 'Aguardando geração da Ccb',
+            12: 'Aguardando assinatura da Ccb',
+            13: 'Aguardando averbação',
+            16: 'Análise crivo automático',
+            29: 'Aguardando geração do pagamento automático',
+            30: 'Aguardando confirmação da autorização'
+        };
+        function nomeStatus(id) { return STATUS_MAP[id] || `Status #${id}`; }
+        const TODAS_PENDENCIAS = ["PEND. ATUAÇÃO PARCEIRO", "REANALISE MESA", "PENDÊNCIA RESOLVIDA", "Sem pêndencia"];
+
+        // ---------- Estado ----------
+        const state = {
+            token: null,
+            usuario: null,
+            filaAtiva: 'fgts',
+            pendenciasSelecionadas: new Set(["REANALISE MESA", "PENDÊNCIA RESOLVIDA", "Sem pêndencia"]), // PEND. ATUAÇÃO PARCEIRO fica de fora por padrão
+            tipoCreditoPorFila: {},
+            paginaPorFila: {},
+            pageCountPorFila: {},
+            contagemPorFila: {},
+            ultimoResultado: null,
+            emAnalise: {}, // operacaoId -> { usuarioNome, fila, dataInicio }
+            etiquetas: {}, // operacaoId -> { etiqueta, dataCriacao }
+            registrosAtuacaoFiltrados: [], // cache dos registros de Atuacoes já filtrados por data, usado no painel por analista
+            modoBusca: null // null = fila normal | 'todasFilas' | 'buscaId'
+        };
+        Object.keys(FILAS).forEach(k => { state.tipoCreditoPorFila[k] = new Set(TODOS_TIPOS_CREDITO); state.paginaPorFila[k] = 1; state.pageCountPorFila[k] = null; state.contagemPorFila[k] = null; });
+
+        // URL fixa do Apps Script (planilha compartilhada "Em Análise") — não exposta na interface
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwkMTACPSrxNMe3DAP83M0QW2DoalO4nj-TvXZ8sVKZmiHnwva-mx6l3IE26eOEEWUn3g/exec';
+        function appsScriptUrl() { return APPS_SCRIPT_URL; }
+
+        // URL fixa da página de detalhe da proposta — não exposta na interface
+        const BASE_URL_DETALHE = 'https://portal.soupresenca.com.br/propostas/propostas-card-list/detalhe/{id}/cliente';
+
+        // Somente este usuário pode editar os filtros de data, pendências e tipo de crédito
+        const USUARIOS_AUTORIZADOS_FILTROS = [
+            'Victor Freitas Ledo Silva - Suporte tech',
+            'arleidedias',
+            'vinicio.santos',
+            'MateusDev',
+            'cristinamota2',
+            'adao.cruz',
+            'joaoguerra2024'
+        ];
+        function podeEditarFiltros() {
+            const nome = (state.usuario?.nome || '').trim().toLowerCase();
+            const login = (state.usuario?.login || '').trim().toLowerCase();
+            return USUARIOS_AUTORIZADOS_FILTROS.some(u => {
+                const alvo = u.trim().toLowerCase();
+                return alvo === nome || alvo === login;
+            });
+        }
+
+        // Lê a planilha "EmAnalise" (GET simples, sem preflight de CORS)
+        async function carregarEmAnalise() {
+            const url = appsScriptUrl();
+            if (!url) return;
+            try {
+                const res = await fetch(url, { method: 'GET' });
+                const json = await res.json();
+                if (json.ok) {
+                    const mapa = {};
+                    json.data.forEach(item => { mapa[item.operacaoId] = item; });
+                    state.emAnalise = mapa;
+                }
+            } catch (e) {
+                console.warn('Falha ao carregar planilha de Em Análise:', e.message);
+            }
+        }
+
+        // Busca a aba "Etiquetas" da planilha compartilhada
+        async function carregarEtiquetas() {
+            const url = appsScriptUrl();
+            if (!url) return;
+            try {
+                const res = await fetch(`${url}?aba=etiquetas`, { method: 'GET' });
+                const json = await res.json();
+                if (json.ok) {
+                    const mapa = {};
+                    json.data.forEach(item => { mapa[item.operacaoId] = item; });
+                    state.etiquetas = mapa;
+                }
+            } catch (e) {
+                console.warn('Falha ao carregar etiquetas:', e.message);
+            }
+        }
+
+        // Define a etiqueta correta com base no produto da proposta.
+        // Convênios -> "em análise NIO/MCC" | INSS -> "em análise FACTA" | demais produtos -> sem etiqueta
+        function determinarEtiqueta(p) {
+            const produtoNome = p.produto?.name || '';
+            if (FILAS.convenios.modalidades.includes(produtoNome)) return 'em análise NIO/MCC';
+            if (produtoNome === 'INSS') return 'em análise FACTA';
+            return null;
+        }
+
+        const ETIQUETA_DURACAO_MS = 2 * 60 * 60 * 1000; // 2 horas
+
+        // Dado o nome de um produto (ex: "Consignado Privado", "Gov Minas"), retorna o nome da fila a que pertence
+        function nomeFilaDoProduto(produtoNome) {
+            for (const key in FILAS) {
+                if (FILAS[key].modalidades.includes(produtoNome)) return FILAS[key].nome;
+            }
+            return produtoNome || 'Desconhecida';
+        }
+
+        // Retorna a etiqueta da proposta apenas se ainda estiver dentro da validade de 2h; caso contrário, null
+        function etiquetaAtivaPara(id) {
+            const et = state.etiquetas[String(id)];
+            if (!et || !et.dataCriacao) return null;
+            const passou = Date.now() - new Date(et.dataCriacao).getTime();
+            if (passou > ETIQUETA_DURACAO_MS || isNaN(passou)) return null;
+            return et;
+        }
+
+        // Marca uma proposta como "em análise por mim" (POST como text/plain para evitar preflight que o Apps Script não trata)
+        // Resolve o nome de exibição da fila com segurança, mesmo nos modos de busca especiais
+        function nomeFilaParaMarcacao(filaKey, p) {
+            return FILAS[filaKey]?.nome || p?.produto?.name || 'Desconhecida';
+        }
+
+        async function marcarEmAnalise(operacaoId, filaKey, nomeFilaOverride) {
+            const url = appsScriptUrl();
+            if (!url) return;
+            const payload = {
+                operacaoId: String(operacaoId),
+                usuarioNome: state.usuario?.nome || 'Desconhecido',
+                fila: nomeFilaOverride || FILAS[filaKey]?.nome || 'Desconhecida',
+                dataInicio: new Date().toISOString()
+            };
+            try {
+                await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
+                state.emAnalise[String(operacaoId)] = payload;
+            } catch (e) {
+                console.warn('Falha ao marcar em análise:', e.message);
+            }
+        }
+
+        // Remove a marcação do usuário atual sem colocar uma nova em seu lugar
+        // (usado quando ele conclui uma proposta e não há próxima disponível na fila)
+        // Registra uma atuação concluída (compliance / pendência / cancelamento) na aba "Atuacoes" da planilha.
+        // Usa a hora de marcação (emAnalise) como "hora que entrou", se existir.
+        async function registrarAtuacao(operacaoId, tipoAcao, filaOverride) {
+            const url = appsScriptUrl();
+            if (!url) return;
+            const marcado = state.emAnalise[String(operacaoId)];
+            const payload = {
+                acao: 'registrarAtuacao',
+                usuarioNome: state.usuario?.nome || 'Desconhecido',
+                operacaoId: String(operacaoId),
+                tipoAcao,
+                fila: filaOverride || marcado?.fila || '',
+                horaEntrada: marcado?.dataInicio || '',
+                horaConclusao: new Date().toISOString()
+            };
+            try {
+                await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
+            } catch (e) {
+                console.warn('Falha ao registrar atuação:', e.message);
+            }
+        }
+
+        // Sai da fila: remove a marcação "em análise" do usuário logado, sem registrar nada em Atuacoes
+        // (usado quando o analista abriu uma proposta mas não concluiu — não deve contar no dashboard)
+        async function sairDaFila() {
+            if (!podeExecutarAcao()) return;
+
+            const meuNome = state.usuario?.nome;
+            const estouEmAlguma = Object.values(state.emAnalise).some(m => m.usuarioNome === meuNome);
+
+            if (!estouEmAlguma) {
+                alert('Você não está marcado em nenhuma proposta agora.');
+                return;
+            }
+
+            await liberarMinhaMarcacao();
+            if (state.ultimoResultado) renderLista(state.ultimoResultado, state.filaAtiva, state.paginaPorFila[state.filaAtiva]);
+        }
+
+        async function liberarMinhaMarcacao() {
+            const url = appsScriptUrl();
+            const meuNome = state.usuario?.nome;
+            if (!url || !meuNome) return;
+            try {
+                await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ usuarioNome: meuNome, acao: 'liberar' })
+                });
+                Object.keys(state.emAnalise).forEach(id => {
+                    if (state.emAnalise[id].usuarioNome === meuNome) delete state.emAnalise[id];
+                });
+            } catch (e) {
+                console.warn('Falha ao liberar marcação:', e.message);
+            }
+        }
+
+        // Remove a marcação de QUALQUER colaborador numa proposta específica.
+        // Restrito ao usuário autorizado (mesma regra dos filtros de data/pendências/tipo de crédito).
+        async function removerMarcacaoAdmin(operacaoId) {
+            if (!podeEditarFiltros()) return;
+            const url = appsScriptUrl();
+            if (!url) return;
+            if (!confirm('Remover a marcação de "em análise" dessa proposta?')) return;
+            try {
+                await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ acao: 'liberarPorOperacao', operacaoId: String(operacaoId) })
+                });
+                delete state.emAnalise[String(operacaoId)];
+                if (state.ultimoResultado) renderLista(state.ultimoResultado, state.filaAtiva, state.paginaPorFila[state.filaAtiva]);
+            } catch (e) {
+                console.warn('Falha ao remover marcação:', e.message);
+            }
+        }
+
+        function minutosDesde(iso) {
+            return Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+        }
+
+        // URL fixa da API — não exposta na interface
+        const API_BASE_URL = 'https://presenca-bank-api.azurewebsites.net';
+        function baseUrl() { return API_BASE_URL; }
+
+        function alternarModoNoturno() {
+            const escuro = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('mesa_modo_noturno', escuro ? '1' : '0');
+            document.getElementById('iconeSol').classList.toggle('hidden', escuro);
+            document.getElementById('iconeLua').classList.toggle('hidden', !escuro);
+        }
+
+        // Aplica a preferência salva assim que o script carrega (antes do login, evitando "flash" de tela clara)
+        (function aplicarModoNoturnoSalvo() {
+            const escuro = localStorage.getItem('mesa_modo_noturno') === '1';
+            if (escuro) document.documentElement.classList.add('dark');
+            document.getElementById('iconeSol')?.classList.toggle('hidden', escuro);
+            document.getElementById('iconeLua')?.classList.toggle('hidden', !escuro);
+        })();
+
+        function todayLocal() {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        function parseJwt(token) {
+            try {
+                const payload = token.split('.')[1];
+                return JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+            } catch { return null; }
+        }
+
+        // Chama a API real diretamente pelo navegador.
+        async function api(method, path, body) {
+            const url = `${baseUrl()}${path}`;
+            const headers = { 'Content-Type': 'application/json' };
+            if (state.token) headers['Authorization'] = `Bearer ${state.token}`;
+
+            let res, data;
+            try {
+                res = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined });
+            } catch (e) {
+                document.getElementById('corsWarning')?.classList.remove('hidden');
+                throw new Error('NETWORK_OR_CORS');
+            }
+            try { data = await res.json(); } catch { data = null; }
+            return { ok: res.ok, status: res.status, data };
+        }
+
+        // ===================== LOGIN + CACHE DIÁRIO =====================
+        function tentarAutoLogin() {
+            const cached = localStorage.getItem('presenca_mesa_auth');
+            if (!cached) return false;
+            try {
+                const obj = JSON.parse(cached);
+                if (obj.dataLogin !== todayLocal()) return false;
+                const payload = parseJwt(obj.token);
+                if (!payload || payload.exp * 1000 < Date.now()) return false;
+                state.token = obj.token;
+                state.usuario = obj.usuario;
+                return true;
+            } catch { return false; }
+        }
+
+        async function doLogin() {
+            const login = document.getElementById('loginInput').value.trim();
+            const senha = document.getElementById('senhaInput').value;
+            if (!login || !senha) { showLoginErr('Preencha login e senha.'); return; }
+
+            document.getElementById('outLogin').innerHTML = '';
+            const { ok, status, data } = await api('POST', '/login', { login, senha });
+
+            if (!ok) {
+                showLoginErr(`Falha no login (HTTP ${status}): ${data?.message || 'verifique as credenciais'}`);
+                return;
+            }
+
+            state.token = data.token;
+            state.usuario = data.usuario;
+            localStorage.setItem('presenca_mesa_auth', JSON.stringify({
+                token: data.token, usuario: data.usuario, dataLogin: todayLocal()
+            }));
+            entrarNoApp();
+        }
+
+        function showLoginErr(msg) {
+            document.getElementById('outLogin').innerHTML = `<div class="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700 mt-2">${msg}</div>`;
+        }
+
+        function doLogout() {
+            localStorage.removeItem('presenca_mesa_auth');
+            state.token = null; state.usuario = null;
+            document.getElementById('app').classList.add('hidden');
+            document.getElementById('loginGate').classList.remove('hidden');
+        }
+
+        function entrarNoApp() {
+            document.getElementById('loginGate').classList.add('hidden');
+            document.getElementById('app').classList.remove('hidden');
+            document.getElementById('usuarioLogado').textContent = state.usuario?.nome || '';
+            atualizarMenuAtivo('fila');
+            initFiltros();
+            renderProdutoNav();
+            carregarEmAnalise().then(() => buscarPropostas(false));
+            carregarContagensFilas();
+            carregarEtiquetas();
+
+            // Atualização automática periódica: planilha de "em análise" + lista de propostas + contagem por fila + etiquetas.
+            // "silencioso=true" evita mostrar o spinner de carregamento, para não interromper quem está lendo.
+            setInterval(async () => {
+                await carregarEmAnalise();
+                await buscarPropostas(true);
+                carregarContagensFilas();
+                carregarEtiquetas();
+            }, 30000);
+        }
+
+        // ===================== FILTROS =====================
+        function diasAtrasLocal(dias) {
+            const d = new Date();
+            d.setDate(d.getDate() - dias);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        function primeiroDiaDoMesLocal() {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+        }
+
+        function initFiltros() {
+            const hoje = todayLocal();
+            document.getElementById('dataInicio').value = diasAtrasLocal(8);
+            document.getElementById('dataFim').value = hoje;
+
+            const autorizado = podeEditarFiltros();
+
+            const sidebarColab = document.getElementById('sidebarColaboradores');
+            sidebarColab.classList.toggle('hidden', !autorizado);
+            sidebarColab.classList.toggle('flex', autorizado);
+            if (autorizado) carregarColaboradoresPorFila();
+
+            const navDash = document.getElementById('navDashboardAtuacao');
+            navDash.classList.toggle('hidden', !autorizado);
+            navDash.classList.toggle('flex', autorizado);
+            document.getElementById('blocoFiltrosRestritos').classList.toggle('hidden', !autorizado);
+
+            document.getElementById('dataInicio').disabled = !autorizado;
+            document.getElementById('dataFim').disabled = !autorizado;
+
+            const avisoExistente = document.getElementById('avisoFiltroBloqueado');
+            if (avisoExistente) avisoExistente.remove();
+
+            const pBox = document.getElementById('pendenciasBox');
+            pBox.innerHTML = TODAS_PENDENCIAS.map(p => `
+                <label class="flex items-start gap-2 py-1.5 text-sm ${autorizado ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}">
+                    <input type="checkbox" class="mt-0.5 chk-pendencia" value="${p}" ${state.pendenciasSelecionadas.has(p) ? 'checked' : ''} ${autorizado ? '' : 'disabled'}>
+                    <span class="${p === 'PEND. ATUAÇÃO PARCEIRO' ? 'text-stone-400' : 'text-stone-700'}">${p}${p === 'PEND. ATUAÇÃO PARCEIRO' ? " <span class='block text-[10px] text-stone-400'>(fora da mesa por padrão)</span>" : ''}</span>
+                </label>
+            `).join('');
+            pBox.querySelectorAll('.chk-pendencia').forEach(chk => {
+                chk.addEventListener('change', () => {
+                    if (chk.checked) state.pendenciasSelecionadas.add(chk.value);
+                    else state.pendenciasSelecionadas.delete(chk.value);
+                    atualizarContadores();
+                });
+            });
+
+            renderTipoCreditoBox();
+            atualizarContadores();
+
+            const btnAplicar = document.getElementById('btnAplicarFiltros');
+            if (btnAplicar) {
+                btnAplicar.disabled = !autorizado;
+                btnAplicar.classList.toggle('opacity-50', !autorizado);
+                btnAplicar.classList.toggle('cursor-not-allowed', !autorizado);
+            }
+        }
+
+        function renderTipoCreditoBox() {
+            const box = document.getElementById('tipoCreditoBox');
+            const selecionados = state.tipoCreditoPorFila[state.filaAtiva];
+            const autorizado = podeEditarFiltros();
+            box.innerHTML = `<p class="text-[10px] font-bold text-stone-400 uppercase mb-2">Filtro específico da fila ${FILAS[state.filaAtiva].nome}</p>` +
+                TODOS_TIPOS_CREDITO.map(t => `
+                    <label class="flex items-center gap-2 py-1 text-sm ${autorizado ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}">
+                        <input type="checkbox" class="chk-tipo" value="${t}" ${selecionados.has(t) ? 'checked' : ''} ${autorizado ? '' : 'disabled'}>
+                        <span class="text-stone-700">${t}</span>
+                    </label>
+                `).join('');
+            box.querySelectorAll('.chk-tipo').forEach(chk => {
+                chk.addEventListener('change', () => {
+                    if (chk.checked) selecionados.add(chk.value);
+                    else selecionados.delete(chk.value);
+                    atualizarContadores();
+                });
+            });
+        }
+
+        function atualizarContadores() {
+            document.getElementById('countPendencias').textContent = state.pendenciasSelecionadas.size;
+            document.getElementById('countTipoCredito').textContent = state.tipoCreditoPorFila[state.filaAtiva].size;
+        }
+
+        // ===================== NAV DE PRODUTO =====================
+        function renderProdutoNav() {
+            const nav = document.getElementById('produtoNav');
+            nav.innerHTML = '';
+            Object.entries(FILAS).forEach(([key, fila]) => {
+                const btn = document.createElement('button');
+                const ativo = key === state.filaAtiva;
+                const contagem = state.contagemPorFila[key];
+                btn.className = `produto-btn ${ativo ? 'active' : ''} flex items-center gap-2.5 px-4 py-3 bg-white border border-stone-200 rounded-xl text-sm font-semibold text-stone-700 shadow-sm`;
+                btn.innerHTML = `
+                    ${svgIcon(key)} ${fila.nome}
+                    <span class="count-badge text-xs font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 min-w-[1.75rem] text-center">${contagem == null ? '…' : contagem}</span>
+                `;
+                btn.onclick = () => {
+                    state.filaAtiva = key;
+                    state.modoBusca = null;
+                    renderProdutoNav();
+                    renderTipoCreditoBox();
+                    atualizarContadores();
+                    buscarPropostas();
+                };
+                nav.appendChild(btn);
+            });
+        }
+
+        // Consulta rapidamente (pageSize=1) o total de propostas em cada fila, para exibir no menu lateral
+        async function carregarContagensFilas() {
+            for (const [key, fila] of Object.entries(FILAS)) {
+                const body = {
+                    tipoPeriodo: 'criacao', page: 1, pageSize: 1,
+                    status: fila.status || ['Análise mesa'], modalidade: fila.modalidades,
+                    tipoCredito: Array.from(state.tipoCreditoPorFila[key]),
+                    startDate: document.getElementById('dataInicio').value,
+                    endDate: document.getElementById('dataFim').value,
+                    pendencias: Array.from(state.pendenciasSelecionadas)
+                };
+                try {
+                    const { ok, data } = await api('POST', '/v2/operacoes/listar', body);
+                    if (ok && data) state.contagemPorFila[key] = data.rowCount ?? 0;
+                } catch { /* mantém valor anterior em caso de falha */ }
+            }
+            renderProdutoNav();
+        }
+
+        // ===================== BUSCA DE PROPOSTAS =====================
+        function dataReferencia(p) {
+            const ultimo = new Date(p.dataUltimoStatus);
+            if (ultimo.getFullYear() > 1900) return ultimo;
+            return new Date(p.dataOperacao);
+        }
+        function horasDesde(date) { return (Date.now() - date.getTime()) / (1000 * 60 * 60); }
+        function formatarEspera(h) {
+            if (h < 1) return `${Math.round(h * 60)} min`;
+            const horas = Math.floor(h);
+            const min = Math.round((h - horas) * 60);
+            return `${horas}h${min > 0 ? ' ' + min + 'min' : ''}`;
+        }
+        function corUrgencia(h) {
+            if (h > 8) return { dot: 'bg-red-500', badge: 'bg-red-50 text-red-700 border-red-200' };
+            if (h > 2) return { dot: 'bg-amber-500', badge: 'bg-amber-50 text-amber-700 border-amber-200' };
+            return { dot: 'bg-green-500', badge: 'bg-green-50 text-green-700 border-green-200' };
+        }
+        function fmtMoney(v) { return v == null ? '—' : 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+        // Retorna a "chave" usada para cache de página/pageCount, dependendo do modo atual
+        function chaveAtual() {
+            if (state.modoBusca === 'todasFilas') return '__todasFilas__';
+            if (state.modoBusca === 'buscaId') return '__buscaId__';
+            return state.filaAtiva;
+        }
+
+        function montarBody(page) {
+            const dataInicio = document.getElementById('dataInicio').value;
+            const dataFim = document.getElementById('dataFim').value;
+
+            if (state.modoBusca === 'todasFilas') {
+                // Igual ao filtro por fila, mas sem o campo "modalidade" — retorna todos os produtos
+                return {
+                    tipoPeriodo: 'criacao', page, pageSize: 40,
+                    status: ['Análise mesa'],
+                    startDate: dataInicio, endDate: dataFim,
+                    pendencias: Array.from(state.pendenciasSelecionadas)
+                };
+            }
+
+            if (state.modoBusca === 'buscaId') {
+                // Busca livre por ID/texto — sem filtros de status/modalidade/pendências
+                return {
+                    tipoPeriodo: 'criacao', page, pageSize: 40,
+                    startDate: dataInicio, endDate: dataFim,
+                    queryText: state.textoBusca || ''
+                };
+            }
+
+            const filaKey = state.filaAtiva;
+            const fila = FILAS[filaKey];
+            return {
+                tipoPeriodo: 'criacao', page, pageSize: 40,
+                status: fila.status || ['Análise mesa'],
+                modalidade: fila.modalidades,
+                tipoCredito: Array.from(state.tipoCreditoPorFila[filaKey]),
+                startDate: dataInicio, endDate: dataFim,
+                pendencias: Array.from(state.pendenciasSelecionadas)
+            };
+        }
+
+        function buscarTodasAsFilas() {
+            state.modoBusca = 'todasFilas';
+            state.paginaPorFila['__todasFilas__'] = 1;
+            state.pageCountPorFila['__todasFilas__'] = null;
+            buscarPropostas();
+        }
+
+        function buscarPorId() {
+            const texto = document.getElementById('buscaId').value.trim();
+            if (!texto) return;
+            state.modoBusca = 'buscaId';
+            state.textoBusca = texto;
+            state.paginaPorFila['__buscaId__'] = 1;
+            state.pageCountPorFila['__buscaId__'] = null;
+            buscarPropostas();
+        }
+
+        function voltarParaFilaNormal() {
+            state.modoBusca = null;
+            document.getElementById('buscaId').value = '';
+            buscarPropostas();
+        }
+
+        async function buscarPropostas(silencioso) {
+            const chave = chaveAtual();
+            const uiPage = state.paginaPorFila[chave] || 1;
+            state.paginaPorFila[chave] = uiPage;
+
+            if (state.modoBusca === 'todasFilas') {
+                document.getElementById('tituloLista').innerHTML = `Todas as Filas`;
+            } else if (state.modoBusca === 'buscaId') {
+                document.getElementById('tituloLista').innerHTML = `Busca: "${state.textoBusca}"`;
+            } else {
+                document.getElementById('tituloLista').innerHTML = `${svgIcon(state.filaAtiva, 'w-4 h-4 inline -mt-0.5 mr-1.5 text-[#E35205]')}${FILAS[state.filaAtiva].nome}`;
+            }
+
+            if (!silencioso) {
+                document.getElementById('listaBody').innerHTML = `<div class="flex items-center justify-center gap-2 py-10 text-stone-400 text-sm"><svg class="spin" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M232,128a104,104,0,0,1-208,0c0-41,23.81-78.36,60.66-95.27a8,8,0,0,1,6.68,14.54C60.15,61.59,40,93.27,40,128a88,88,0,0,0,176,0c0-34.73-20.15-66.41-51.34-80.73a8,8,0,0,1,6.68-14.54C215.19,49.64,232,87,232,128Z"></path></svg>Carregando propostas...</div>`;
+                document.getElementById('paginacao').innerHTML = '';
+            }
+            document.getElementById('corsWarning').classList.add('hidden');
+
+            try {
+                let pageCount = state.pageCountPorFila[chave];
+                let data, discovery;
+
+                // Se ainda não sabemos o total de páginas para este filtro, descobre com uma busca na página 1 da API
+                if (!pageCount) {
+                    const resp = await api('POST', '/v2/operacoes/listar', montarBody(1));
+                    if (resp.status === 401) { alert('Sessão expirada. Faça login novamente.'); doLogout(); return; }
+                    if (!resp.ok || !resp.data) {
+                        if (!silencioso) document.getElementById('listaBody').innerHTML = `<div class="p-5 text-sm text-red-600">Falha ao buscar propostas (HTTP ${resp.status}): ${resp.data?.message || 'erro desconhecido'}</div>`;
+                        return;
+                    }
+                    discovery = resp.data;
+                    pageCount = discovery.pageCount || 1;
+                    state.pageCountPorFila[chave] = pageCount;
+                }
+
+                // No modo fila normal, a "página 1" exibida corresponde à ÚLTIMA página real da API (mais antiga).
+                // Nos modos de busca especiais (todas as filas / busca por id), mantemos a ordem normal da API (sem inverter).
+                const inverterPaginas = state.modoBusca === null;
+                const apiPage = inverterPaginas ? Math.max(1, pageCount - (uiPage - 1)) : uiPage;
+
+                if (apiPage === 1 && discovery) {
+                    data = discovery; // já temos os dados da página 1 real, não precisa buscar de novo
+                } else {
+                    const resp2 = await api('POST', '/v2/operacoes/listar', montarBody(apiPage));
+                    if (resp2.status === 401) { alert('Sessão expirada. Faça login novamente.'); doLogout(); return; }
+                    if (!resp2.ok || !resp2.data) {
+                        if (!silencioso) document.getElementById('listaBody').innerHTML = `<div class="p-5 text-sm text-red-600">Falha ao buscar propostas (HTTP ${resp2.status}): ${resp2.data?.message || 'erro desconhecido'}</div>`;
+                        return;
+                    }
+                    data = resp2.data;
+                }
+
+                state.ultimoResultado = data;
+                renderLista(data, chave, uiPage);
+            } catch (e) {
+                if (e.message !== 'NETWORK_OR_CORS') {
+                    document.getElementById('listaBody').innerHTML = `<div class="p-5 text-sm text-red-600">Erro inesperado: ${e.message}</div>`;
+                } else {
+                    document.getElementById('listaBody').innerHTML = '';
+                }
+            }
+        }
+
+        // Guarda contra clique duplo/repetido em qualquer uma das ações abaixo
+        let ultimaAcaoTimestamp = 0;
+        const DEBOUNCE_MS = 1200;
+        function podeExecutarAcao() {
+            const agora = Date.now();
+            if (agora - ultimaAcaoTimestamp < DEBOUNCE_MS) return false;
+            ultimaAcaoTimestamp = agora;
+            return true;
+        }
+
+        function setBotoesProximaDisabled(desabilitado) {
+            const btn = document.getElementById('btnPuxarProposta');
+            if (btn) {
+                btn.disabled = desabilitado;
+                btn.classList.toggle('opacity-50', desabilitado);
+                btn.classList.toggle('cursor-not-allowed', desabilitado);
+            }
+        }
+
+        // Chama PUT /operacoes/{id}/validar-compliance para a proposta clicada
+        async function validarCompliance(id) {
+            const btn = document.getElementById(`btnCompliance-${id}`);
+            if (!btn) return;
+
+            const tooltipOriginal = btn.dataset.tooltip;
+            btn.disabled = true;
+            btn.classList.add('opacity-60', 'cursor-not-allowed');
+            btn.dataset.tooltip = 'Validando...';
+
+            try {
+                const { ok, status, data } = await api('PUT', `/operacoes/${id}/validar-compliance`);
+
+                if (status === 401) {
+                    alert('Sessão expirada. Faça login novamente.');
+                    doLogout();
+                    return;
+                }
+
+                if (ok) {
+                    btn.dataset.tooltip = 'Compliance validado ✓';
+                    btn.classList.remove('border-stone-200');
+                    btn.classList.add('border-green-400', 'bg-green-50');
+
+                    registrarAtuacao(id, 'compliance');
+
+                    // Remove essa proposta da lista local antes de buscar a próxima,
+                    // para evitar que ela mesma seja escolhida de novo caso não estivesse marcada por ninguém.
+                    if (state.ultimoResultado?.result) {
+                        state.ultimoResultado.result = state.ultimoResultado.result.filter(p => String(p.id) !== String(id));
+                    }
+
+                    await concluirEIrParaProxima(); // valida e já encaminha para a próxima proposta livre da fila
+                } else {
+                    btn.dataset.tooltip = 'Erro — clique para tentar de novo';
+                    btn.classList.add('border-red-300');
+                    console.warn('Falha ao validar compliance:', status, data);
+                }
+            } catch (e) {
+                if (e.message !== 'NETWORK_OR_CORS') {
+                    btn.dataset.tooltip = 'Erro — clique para tentar de novo';
+                }
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('opacity-60', 'cursor-not-allowed');
+                if (btn.dataset.tooltip === 'Validando...') btn.dataset.tooltip = tooltipOriginal;
+            }
+        }
+
+        // ===================== PENDENCIAR PROPOSTA =====================
+        let pendenciaIdAtual = null;
+
+        function abrirModalPendencia(id) {
+            pendenciaIdAtual = id;
+            document.getElementById('pendenciaPropostaId').textContent = `#${id}`;
+            document.getElementById('observacaoPendencia').value = '';
+            document.getElementById('outPendencia').innerHTML = '';
+            document.getElementById('modalPendencia').classList.remove('hidden');
+        }
+
+        function fecharModalPendencia() {
+            document.getElementById('modalPendencia').classList.add('hidden');
+            pendenciaIdAtual = null;
+        }
+
+        async function confirmarPendencia() {
+            const observacao = document.getElementById('observacaoPendencia').value.trim();
+            const out = document.getElementById('outPendencia');
+
+            if (!observacao) { out.innerHTML = `<div class="text-sm text-red-600">Descreva a observação da pendência.</div>`; return; }
+            if (!pendenciaIdAtual) return;
+
+            const btn = document.getElementById('btnConfirmarPendencia');
+            btn.disabled = true;
+            btn.textContent = 'Enviando...';
+            out.innerHTML = '';
+
+            try {
+                const { ok, status, data } = await api('PATCH', `/operacoes/${pendenciaIdAtual}/pendenciar`, { observacao });
+
+                if (status === 401) { alert('Sessão expirada. Faça login novamente.'); doLogout(); return; }
+
+                if (ok) {
+                    registrarAtuacao(pendenciaIdAtual, 'pendencia');
+                    fecharModalPendencia();
+
+                    // Remove essa proposta da lista local antes de buscar a próxima,
+                    // para evitar que ela mesma seja escolhida de novo caso não estivesse marcada por ninguém.
+                    if (state.ultimoResultado?.result) {
+                        state.ultimoResultado.result = state.ultimoResultado.result.filter(p => String(p.id) !== String(pendenciaIdAtual));
+                    }
+
+                    await concluirEIrParaProxima(); // a proposta pendenciada some da fila; já busca a próxima
+                } else {
+                    out.innerHTML = `<div class="text-sm text-red-600">Falha ao pendenciar (HTTP ${status}): ${data?.message || 'erro desconhecido'}</div>`;
+                }
+            } catch (e) {
+                if (e.message !== 'NETWORK_OR_CORS') out.innerHTML = `<div class="text-sm text-red-600">Erro inesperado: ${e.message}</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Confirmar pendência';
+            }
+        }
+
+        // ===================== ADICIONAR OBSERVAÇÃO =====================
+        let observacaoContextoAtual = null; // { id, filaKey, p }
+
+        function abrirModalObservacao(id, filaKey, p) {
+            observacaoContextoAtual = { id, filaKey, p };
+            document.getElementById('observacaoPropostaId').textContent = `#${id}`;
+            document.getElementById('textoObservacao').value = '';
+            document.getElementById('outObservacao').innerHTML = '';
+            document.getElementById('modalObservacao').classList.remove('hidden');
+        }
+
+        function fecharModalObservacao() {
+            document.getElementById('modalObservacao').classList.add('hidden');
+            observacaoContextoAtual = null;
+        }
+
+        async function confirmarObservacao() {
+            const observacao = document.getElementById('textoObservacao').value.trim();
+            const out = document.getElementById('outObservacao');
+
+            if (!observacao) { out.innerHTML = `<div class="text-sm text-red-600">Descreva a observação.</div>`; return; }
+            if (!observacaoContextoAtual) return;
+
+            const { id, filaKey, p } = observacaoContextoAtual;
+            const btn = document.getElementById('btnConfirmarObservacao');
+            btn.disabled = true;
+            btn.textContent = 'Salvando...';
+            out.innerHTML = '';
+
+            try {
+                const { ok, status, data } = await api('POST', '/v3/operacoes/observacao', { operacaoId: id, observacao });
+
+                if (status === 401) { alert('Sessão expirada. Faça login novamente.'); doLogout(); return; }
+
+                if (ok) {
+                    registrarAtuacao(id, 'observacao', nomeFilaDoProduto(p.produto?.name));
+
+                    const etiqueta = determinarEtiqueta(p);
+                    if (etiqueta) {
+                        await adicionarEtiqueta(id, etiqueta);
+                    }
+
+                    fecharModalObservacao();
+                    if (state.ultimoResultado) renderLista(state.ultimoResultado, state.filaAtiva, state.paginaPorFila[state.filaAtiva]);
+                } else {
+                    out.innerHTML = `<div class="text-sm text-red-600">Falha ao salvar (HTTP ${status}): ${data?.message || 'erro desconhecido'}</div>`;
+                }
+            } catch (e) {
+                if (e.message !== 'NETWORK_OR_CORS') out.innerHTML = `<div class="text-sm text-red-600">Erro inesperado: ${e.message}</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Salvar observação';
+            }
+        }
+
+        async function adicionarEtiqueta(operacaoId, etiqueta) {
+            const url = appsScriptUrl();
+            if (!url) return;
+            const payload = { acao: 'adicionarEtiqueta', operacaoId: String(operacaoId), etiqueta, dataCriacao: new Date().toISOString() };
+            try {
+                await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
+                state.etiquetas[String(operacaoId)] = { etiqueta, dataCriacao: payload.dataCriacao };
+            } catch (e) {
+                console.warn('Falha ao adicionar etiqueta:', e.message);
+            }
+        }
+
+        // ===================== CANCELAMENTO =====================
+        let cancelamentoIdAtual = null;
+
+        // ===================== CHECKLIST DA OPERAÇÃO =====================
+        // Copia o link de formalização do cliente para a área de transferência.
+        // O nome exato do campo na resposta da API ainda não foi confirmado — tenta os candidatos mais prováveis.
+        function copiarLinkFormalizacao(p) {
+            const link = p.formalizacao?.link || p.linkFormalizacao || p.formalizacaoLink || null;
+            const btn = document.getElementById(`btnLinkFormalizacao-${p.id}`);
+
+            if (!link) {
+                if (btn) {
+                    const tooltipOriginal = btn.dataset.tooltip;
+                    btn.dataset.tooltip = 'Link não encontrado nesta proposta';
+                    setTimeout(() => { btn.dataset.tooltip = tooltipOriginal; }, 2500);
+                }
+                return;
+            }
+
+            const textArea = document.createElement('textarea');
+            textArea.value = link;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try { document.execCommand('copy'); } catch (e) { console.warn('Falha ao copiar link:', e.message); }
+            document.body.removeChild(textArea);
+
+            if (btn) {
+                const tooltipOriginal = btn.dataset.tooltip;
+                btn.dataset.tooltip = 'Link copiado ✓';
+                setTimeout(() => { btn.dataset.tooltip = tooltipOriginal; }, 2000);
+            }
+        }
+
+        function corStatusChecklist(status) {
+            const s = (status || '').toLowerCase();
+            if (s === 'aprovado') return { dot: 'bg-green-500', badge: 'bg-green-50 text-green-700' };
+            if (s === 'erro' || s === 'reprovado') return { dot: 'bg-red-500', badge: 'bg-red-50 text-red-700' };
+            if (s === 'pendente') return { dot: 'bg-amber-500', badge: 'bg-amber-50 text-amber-700' };
+            return { dot: 'bg-stone-400', badge: 'bg-stone-100 text-stone-600' };
+        }
+
+        async function abrirModalChecklist(id) {
+            document.getElementById('modalChecklist').classList.remove('hidden');
+            const corpo = document.getElementById('corpoModalChecklist');
+            corpo.innerHTML = `<div class="flex items-center justify-center gap-2 py-10 text-stone-400 text-sm"><svg class="spin" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M232,128a104,104,0,0,1-208,0c0-41,23.81-78.36,60.66-95.27a8,8,0,0,1,6.68,14.54C60.15,61.59,40,93.27,40,128a88,88,0,0,0,176,0c0-34.73-20.15-66.41-51.34-80.73a8,8,0,0,1,6.68-14.54C215.19,49.64,232,87,232,128Z"></path></svg>Carregando checklist...</div>`;
+
+            try {
+                const { ok, status, data } = await api('GET', `/v5/operacoes/check-list/${id}`);
+                if (status === 401) { alert('Sessão expirada. Faça login novamente.'); doLogout(); return; }
+                if (!ok || !Array.isArray(data)) {
+                    corpo.innerHTML = `<p class="text-sm text-red-600">Falha ao carregar checklist (HTTP ${status}).</p>`;
+                    return;
+                }
+                renderChecklist(data);
+            } catch (e) {
+                if (e.message !== 'NETWORK_OR_CORS') corpo.innerHTML = `<p class="text-sm text-red-600">Erro inesperado: ${e.message}</p>`;
+            }
+        }
+
+        function renderChecklist(itens) {
+            const corpo = document.getElementById('corpoModalChecklist');
+
+            if (itens.length === 0) {
+                corpo.innerHTML = `<p class="text-sm text-stone-400 text-center py-10">Nenhum item de checklist encontrado para esta operação.</p>`;
+                return;
+            }
+
+            let html = `<table class="w-full text-left text-sm">
+                <thead class="border-b border-stone-200 text-stone-400 text-xs uppercase font-bold">
+                    <tr>
+                        <th class="py-3 pr-4">Item de Verificação</th>
+                        <th class="py-3 pr-4">Status</th>
+                        <th class="py-3">Histórico</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-stone-100">`;
+
+            itens.forEach(item => {
+                const cor = corStatusChecklist(item.status);
+                html += `
+                    <tr>
+                        <td class="py-3.5 pr-4 text-stone-700">${item.tipo || '—'}</td>
+                        <td class="py-3.5 pr-4">
+                            <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${cor.badge}">
+                                <span class="w-1.5 h-1.5 rounded-full ${cor.dot}"></span>
+                                ${item.status || '—'}
+                            </span>
+                        </td>
+                        <td class="py-3.5 text-xs text-stone-400 text-right">
+                            <div>Criado: ${fmtDataHora(item.dataCadastro)}</div>
+                            ${item.dataAprovacao ? `<div class="text-blue-600 font-semibold">${item.status}: ${fmtDataHora(item.dataAprovacao)}</div>` : ''}
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `</tbody></table>
+                <div class="text-right text-xs text-stone-400 mt-3">Total de registros: ${itens.length}</div>`;
+
+            corpo.innerHTML = html;
+        }
+
+        function fecharModalChecklist() {
+            document.getElementById('modalChecklist').classList.add('hidden');
+        }
+
+        async function abrirModalCancelamento(id) {
+            cancelamentoIdAtual = id;
+            document.getElementById('cancelPropostaId').textContent = id;
+            document.getElementById('descricaoCancelamento').value = '';
+            document.getElementById('outCancelamento').innerHTML = '';
+            document.getElementById('modalCancelamento').classList.remove('hidden');
+
+            const select = document.getElementById('selectMotivoCancelamento');
+            select.innerHTML = `<option value="">Carregando motivos...</option>`;
+
+            try {
+                const { ok, status, data } = await api('GET', '/operacoes/motivos-cancelamento');
+                if (status === 401) { alert('Sessão expirada. Faça login novamente.'); doLogout(); return; }
+                if (!ok || !Array.isArray(data)) {
+                    select.innerHTML = `<option value="">Falha ao carregar motivos</option>`;
+                    return;
+                }
+                select.innerHTML = `<option value="">Selecione um motivo...</option>` +
+                    data.map(m => `<option value="${m.id}">${m.name || m.nome || m.descricao || ('Motivo #' + m.id)}</option>`).join('');
+            } catch (e) {
+                select.innerHTML = `<option value="">Falha ao carregar motivos</option>`;
+            }
+        }
+
+        function fecharModalCancelamento() {
+            document.getElementById('modalCancelamento').classList.add('hidden');
+            cancelamentoIdAtual = null;
+        }
+
+        async function confirmarCancelamento() {
+            const motivoId = document.getElementById('selectMotivoCancelamento').value;
+            const descricao = document.getElementById('descricaoCancelamento').value.trim();
+            const out = document.getElementById('outCancelamento');
+
+            if (!motivoId) { out.innerHTML = `<div class="text-sm text-red-600">Selecione um motivo de cancelamento.</div>`; return; }
+            if (!cancelamentoIdAtual) return;
+
+            const btn = document.getElementById('btnConfirmarCancelamento');
+            btn.disabled = true;
+            btn.textContent = 'Cancelando...';
+            out.innerHTML = '';
+
+            try {
+                const { ok, status, data } = await api('PUT', `/operacoes/${cancelamentoIdAtual}/cancelar/${motivoId}`, { descricao });
+
+                if (status === 401) { alert('Sessão expirada. Faça login novamente.'); doLogout(); return; }
+
+                if (ok) {
+                    registrarAtuacao(cancelamentoIdAtual, 'cancelamento');
+                    fecharModalCancelamento();
+
+                    // Remove essa proposta da lista local antes de buscar a próxima,
+                    // para evitar que ela mesma seja escolhida de novo caso não estivesse marcada por ninguém.
+                    if (state.ultimoResultado?.result) {
+                        state.ultimoResultado.result = state.ultimoResultado.result.filter(p => String(p.id) !== String(cancelamentoIdAtual));
+                    }
+
+                    await concluirEIrParaProxima(); // a proposta cancelada some da fila; já busca a próxima
+                } else {
+                    out.innerHTML = `<div class="text-sm text-red-600">Falha ao cancelar (HTTP ${status}): ${data?.message || 'erro desconhecido'}</div>`;
+                }
+            } catch (e) {
+                if (e.message !== 'NETWORK_OR_CORS') out.innerHTML = `<div class="text-sm text-red-600">Erro inesperado: ${e.message}</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Confirmar cancelamento';
+            }
+        }
+
+        // ===================== ETAPAS DA PROPOSTA =====================
+        function fmtDataHora(iso) {
+            if (!iso) return '—';
+            const d = new Date(iso);
+            return d.toLocaleString('pt-BR');
+        }
+
+        async function abrirModalEtapas(id) {
+            document.getElementById('modalEtapas').classList.remove('hidden');
+            const corpo = document.getElementById('corpoModalEtapas');
+            corpo.innerHTML = `<div class="flex items-center justify-center gap-2 py-10 text-stone-400 text-sm"><svg class="spin" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M232,128a104,104,0,0,1-208,0c0-41,23.81-78.36,60.66-95.27a8,8,0,0,1,6.68,14.54C60.15,61.59,40,93.27,40,128a88,88,0,0,0,176,0c0-34.73-20.15-66.41-51.34-80.73a8,8,0,0,1,6.68-14.54C215.19,49.64,232,87,232,128Z"></path></svg>Carregando etapas...</div>`;
+
+            try {
+                const { ok, status, data } = await api('GET', `/operacoes/etapas?IdProposta=${id}`);
+                if (status === 401) { alert('Sessão expirada. Faça login novamente.'); doLogout(); return; }
+                if (!ok || !data) {
+                    corpo.innerHTML = `<p class="text-sm text-red-600">Falha ao carregar etapas (HTTP ${status}).</p>`;
+                    return;
+                }
+
+                // A API pode retornar um único objeto de etapa ou uma lista — tratamos os dois casos
+                const etapas = Array.isArray(data) ? data : [data];
+                renderEtapas(etapas);
+            } catch (e) {
+                if (e.message !== 'NETWORK_OR_CORS') corpo.innerHTML = `<p class="text-sm text-red-600">Erro inesperado: ${e.message}</p>`;
+            }
+        }
+
+        // Resolve o nome legível de uma etapa, tentando várias fontes em ordem de confiança.
+        // O campo statusId desse endpoint não corresponde ao mapa de status pequeno (1-30) usado em outras telas —
+        // por isso não usamos mais "Status #N" como fallback (a pedido do usuário).
+        function nomeEtapa(etapa) {
+            if (etapa.status) return etapa.status;
+            if (STATUS_MAP[etapa.statusId]) return STATUS_MAP[etapa.statusId];
+            if (etapa.descricao) return etapa.descricao;
+            if (Array.isArray(etapa.historicoConsulta) && etapa.historicoConsulta.length > 0) {
+                const primeiro = etapa.historicoConsulta[0];
+                return primeiro.codigo || primeiro.descricao || 'Etapa';
+            }
+            return 'Etapa';
+        }
+
+        function renderEtapas(etapas) {
+            const corpo = document.getElementById('corpoModalEtapas');
+
+            let html = `<table class="w-full text-left text-sm mb-2">
+                <thead class="border-b border-stone-200 text-stone-500 text-xs uppercase font-bold">
+                    <tr><th class="py-2 pr-4">Etapa</th><th class="py-2">Data</th></tr>
+                </thead>
+                <tbody class="divide-y divide-stone-100">`;
+
+            etapas.forEach((etapa, idx) => {
+                const temHistorico = Array.isArray(etapa.historicoConsulta) && etapa.historicoConsulta.length > 0;
+                html += `
+                    <tr class="${temHistorico ? 'cursor-pointer hover:bg-stone-50' : ''}" ${temHistorico ? `onclick="toggleEtapaDetalhe(${idx})"` : ''}>
+                        <td class="py-3 pr-4 font-semibold text-stone-800">
+                            ${temHistorico ? `<svg id="chevEtapa-${idx}" width="12" height="12" fill="currentColor" viewBox="0 0 256 256" class="inline mr-1.5 transition-transform text-stone-400"><path d="M181.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L164.69,128,98.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,181.66,133.66Z"></path></svg>` : ''}
+                            ${nomeEtapa(etapa)}
+                        </td>
+                        <td class="py-3 text-stone-500 code-font text-xs">${fmtDataHora(etapa.dataStatus)}</td>
+                    </tr>
+                    <tr id="detalheEtapa-${idx}" class="hidden">
+                        <td colspan="2" class="pb-3 pl-6">
+                            <div class="space-y-2.5 border-l-2 border-stone-200 pl-4">
+                                ${temHistorico ? etapa.historicoConsulta.map(h => `
+                                    <div>
+                                        <p class="text-sm text-stone-700">${h.descricao || h.codigo || '—'}</p>
+                                        <p class="text-xs text-stone-400 code-font">${fmtDataHora(h.dataCadastro)}</p>
+                                    </div>
+                                `).join('') : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `</tbody></table>`;
+            corpo.innerHTML = html;
+        }
+
+        function toggleEtapaDetalhe(idx) {
+            const linha = document.getElementById(`detalheEtapa-${idx}`);
+            const chevron = document.getElementById(`chevEtapa-${idx}`);
+            if (!linha) return;
+            linha.classList.toggle('hidden');
+            if (chevron) chevron.style.transform = linha.classList.contains('hidden') ? '' : 'rotate(90deg)';
+        }
+
+        function fecharModalEtapas() {
+            document.getElementById('modalEtapas').classList.add('hidden');
+        }
+
+        // Clique na linha: apenas abre a página de detalhe, sem marcar nada na planilha compartilhada
+        function fecharModalBloqueado() {
+            document.getElementById('modalBloqueado').classList.add('hidden');
+        }
+
+        async function visualizarProposta(id, filaKey, p) {
+            if (!podeExecutarAcao()) return;
+
+            const etiquetaAtiva = etiquetaAtivaPara(id);
+            if (etiquetaAtiva) {
+                document.getElementById('msgModalBloqueado').textContent = `Esta proposta está marcada como "${etiquetaAtiva.etiqueta}" e não pode ser aberta pela fila enquanto essa etiqueta estiver ativa (expira 2h após ser adicionada).`;
+                document.getElementById('modalBloqueado').classList.remove('hidden');
+                return;
+            }
+
+            await carregarEmAnalise(); // garante o estado mais fresco possível antes de decidir
+
+            const marcado = state.emAnalise[String(id)];
+            const meuNome = state.usuario?.nome;
+
+            if (marcado && marcado.usuarioNome !== meuNome) {
+                const min = minutosDesde(marcado.dataInicio);
+                document.getElementById('msgModalBloqueado').textContent = `Esta proposta está sendo analisada por ${marcado.usuarioNome} há ${min} min. Você não pode acessá-la até que ${marcado.usuarioNome} passe para outra proposta.`;
+                document.getElementById('modalBloqueado').classList.remove('hidden');
+                if (state.ultimoResultado) renderLista(state.ultimoResultado, state.filaAtiva, state.paginaPorFila[state.filaAtiva]);
+                return;
+            }
+
+            const template = BASE_URL_DETALHE;
+            window.open(template.replace('{id}', id), '_blank');
+
+            // Marca o colaborador logado nesta proposta (abre primeiro para ser rápido, marca em seguida)
+            const nomeFila = nomeFilaParaMarcacao(filaKey, p);
+            marcarEmAnalise(id, filaKey, nomeFila).then(() => {
+                if (state.ultimoResultado) renderLista(state.ultimoResultado, state.filaAtiva, state.paginaPorFila[state.filaAtiva]);
+            });
+        }
+
+        // "Puxar" uma proposta: abre a página de detalhe já (rápido) e marca como minha na planilha em seguida
+        async function puxarProposta(id, filaKey) {
+            const template = BASE_URL_DETALHE;
+            window.open(template.replace('{id}', id), '_blank');
+
+            await marcarEmAnalise(id, filaKey);
+            if (state.ultimoResultado) renderLista(state.ultimoResultado, state.filaAtiva, state.paginaPorFila[state.filaAtiva]);
+        }
+
+        // Busca, na fila ativa, a proposta sem ninguém marcado com maior tempo de espera, e já abre + marca
+        async function concluirEIrParaProxima() {
+            if (!podeExecutarAcao()) return;
+            setBotoesProximaDisabled(true);
+            try {
+                await carregarEmAnalise(); // garante estado fresco antes de decidir
+
+                const filaKey = state.filaAtiva;
+                const resultado = state.ultimoResultado;
+
+                if (!resultado || !resultado.result || resultado.result.length === 0) {
+                    alert('Não há propostas carregadas nesta fila. Clique em "Aplicar filtros" para atualizar.');
+                    return;
+                }
+
+                // Exclui propostas marcadas por outro colaborador E propostas etiquetadas manualmente
+                // (etiquetas como "em análise NIO/MCC" ou "em análise FACTA" não devem ser puxadas automaticamente)
+                const livres = resultado.result.filter(p => !state.emAnalise[String(p.id)] && !etiquetaAtivaPara(p.id));
+
+                if (livres.length === 0) {
+                    await liberarMinhaMarcacao();
+                    if (state.ultimoResultado) renderLista(state.ultimoResultado, state.filaAtiva, state.paginaPorFila[state.filaAtiva]);
+                    alert('Não há propostas livres (sem analista) nesta fila com os filtros atuais. Sua marcação anterior foi liberada.');
+                    return;
+                }
+
+                const ordenadas = [...livres].sort((a, b) => horasDesde(dataReferencia(b)) - horasDesde(dataReferencia(a)));
+                const proxima = ordenadas[0];
+
+                await puxarProposta(proxima.id, filaKey);
+            } finally {
+                setBotoesProximaDisabled(false);
+            }
+        }
+
+
+        function renderLista(data, filaKey, page) {
+            const result = data.result || [];
+            const contagemReal = data.rowCount ?? result.length;
+            document.getElementById('contagemLista').textContent = `${contagemReal} na fila`;
+
+            // Sincroniza o badge do menu de filas com esse mesmo número, evitando divergência
+            // entre a contagem exibida no menu e a contagem real da lista aberta.
+            if (state.modoBusca === null && FILAS[filaKey]) {
+                state.contagemPorFila[filaKey] = contagemReal;
+                renderProdutoNav();
+            }
+
+            const body = document.getElementById('listaBody');
+            body.innerHTML = '';
+
+            if (result.length === 0) {
+                body.innerHTML = `<p class="text-sm text-stone-400 text-center py-10">Nenhuma proposta em Análise mesa com os filtros atuais</p>`;
+                document.getElementById('paginacao').innerHTML = '';
+                return;
+            }
+
+            const ordenadas = [...result].sort((a, b) => horasDesde(dataReferencia(b)) - horasDesde(dataReferencia(a)));
+
+            ordenadas.forEach(p => {
+                const espera = horasDesde(dataReferencia(p));
+                const urg = corUrgencia(espera);
+                const marcado = state.emAnalise[String(p.id)];
+                const etiquetaProposta = etiquetaAtivaPara(p.id);
+                const row = document.createElement('div');
+                row.className = 'row-proposta px-5 py-4';
+                row.onclick = () => visualizarProposta(p.id, filaKey, p);
+
+                const parcelamento = (p.quantidadeParcelas != null && p.valorParcela != null)
+                    ? `${p.quantidadeParcelas}x de ${fmtMoney(p.valorParcela)}`
+                    : '—';
+
+                row.innerHTML = `
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap mb-2">
+                                <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-[#E35205] text-white shadow-sm">${p.produto?.name || '—'}</span>
+                                <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">${p.tipoCredito?.nome || p.tipoCredito?.name || '—'}</span>
+                                <span class="code-font text-xs text-stone-400">#${p.id}</span>
+                            </div>
+
+                            <p class="text-sm font-bold text-stone-800 mb-2">${(p.tomador?.nome || '—').toUpperCase()}</p>
+
+                            <div class="flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-stone-600 mb-3">
+                                <span><span class="text-stone-400">Cpf:</span> <span class="code-font">${p.tomador?.cpf || '—'}</span></span>
+                                <span><span class="text-stone-400">Bruto (solicitado):</span> <span class="font-semibold code-font">${fmtMoney(p.valorSolicitado)}</span></span>
+                                <span><span class="text-stone-400">Liberado:</span> <span class="font-semibold code-font">${fmtMoney(p.valorLiberado)}</span></span>
+                                <span><span class="text-stone-400">Parcelamento:</span> <span class="font-semibold code-font">${parcelamento}</span></span>
+                                <span><span class="text-stone-400">Data da Proposta:</span> <span class="code-font">${fmtDataHora(p.dataOperacao)}</span></span>
+                                <span><span class="text-stone-400">Fundo Investimento:</span> ${p.tabela?.fundoInvestimento || '—'}</span>
+                                <span><span class="text-stone-400">Parceiro:</span> ${p.tenant?.nome || '—'}</span>
+                            </div>
+
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                ${p.pendencia?.status?.name ? `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-stone-100 text-stone-500">${p.pendencia.status.name}</span>` : ''}
+                                ${etiquetaProposta ? `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700" title="Etiqueta manual — não é puxada automaticamente pela fila">📎 ${etiquetaProposta.etiqueta}</span>` : ''}
+                                ${marcado ? `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 inline-flex items-center gap-1.5" title="Marcado via planilha compartilhada">🔒 em análise: ${marcado.usuarioNome} (${minutosDesde(marcado.dataInicio)}min)${podeEditarFiltros() ? ` <button class="btn-remover-marcacao text-purple-900 hover:text-red-600 font-bold" data-op-id="${p.id}" title="Remover marcação (apenas admin)">✕</button>` : ''}</span>` : ''}
+                            </div>
+
+                            ${p.status?.name ? `<span class="inline-block mt-3 text-xs font-bold px-3 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-200">${p.status.name.toUpperCase()}</span>` : ''}
+                        </div>
+
+                        <div class="flex flex-col items-end gap-2 shrink-0">
+                            <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${urg.badge}">
+                                <span class="w-1.5 h-1.5 rounded-full ${urg.dot}"></span>
+                                ${formatarEspera(espera)}
+                            </span>
+                            <div class="flex items-center gap-2">
+                                <button id="btnLinkFormalizacao-${p.id}" data-tooltip="Copiar link de formalização" class="icon-btn shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-stone-200 text-blue-500 hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M137.54,186.34a8,8,0,0,1,0,11.32l-9.94,9.94a58.83,58.83,0,0,1-83.15-83.15l24.24-24.24A58.83,58.83,0,0,1,152,98.71a8,8,0,1,1-11.32,11.31,42.83,42.83,0,0,0-60.68,0L55.76,134.26a42.83,42.83,0,0,0,60.68,60.68l9.94-9.94A8,8,0,0,1,137.54,186.34Zm70.4-138.28a58.86,58.86,0,0,0-83.15,0l-9.94,9.95a8,8,0,0,0,11.32,11.31l9.94-9.94a42.83,42.83,0,0,1,60.68,60.68l-24.24,24.24a42.83,42.83,0,0,1-60.68,0,8,8,0,1,0-11.32,11.32,58.83,58.83,0,0,0,83.15,0l24.24-24.24A58.92,58.92,0,0,0,207.94,48.06Z"></path></svg>
+                                </button>
+                                <button id="btnChecklist-${p.id}" data-tooltip="Check List" class="icon-btn shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-stone-200 text-stone-500 hover:border-[#E35205] hover:bg-orange-50 hover:text-[#E35205] transition-colors">
+                                    <svg width="15" height="15" fill="currentColor" viewBox="0 0 256 256"><path d="M200,32H163.74a32,32,0,0,0-59.48,0H56A16,16,0,0,0,40,48V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V48A16,16,0,0,0,200,32Zm-72,0a16,16,0,0,1,16,16H112A16,16,0,0,1,128,32Zm72,184H56V48H92.42A32.2,32.2,0,0,0,92,56v8a8,8,0,0,0,8,8h56a8,8,0,0,0,8-8V56a32.2,32.2,0,0,0-.42-8H200Z"></path></svg>
+                                </button>
+                                <button id="btnObservacao-${p.id}" data-tooltip="Adicionar observação" class="icon-btn shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-stone-200 text-stone-500 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M216.08,192a8,8,0,0,1-11.32,11.31L152,150.6,98.34,204.24a44,44,0,0,1-62.24-62.24L152,25.94a44,44,0,0,1,62.24,62.24L108.34,193.9a20,20,0,0,1-28.28-28.28l83.4-83.4a8,8,0,0,1,11.31,11.32l-83.39,83.39a4,4,0,0,0,5.65,5.66L203.61,76.86a28,28,0,1,0-39.6-39.6L47.7,153.6a28,28,0,1,0,39.6,39.6L152,138.34l52.66,52.65A8,8,0,0,1,216.08,192Z"></path></svg>
+                                </button>
+                                <button id="btnPendenciar-${p.id}" data-tooltip="Pendenciar proposta" class="icon-btn shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-stone-200 text-amber-500 hover:border-amber-400 hover:bg-amber-50 transition-colors">
+                                    <svg width="18" height="18" fill="currentColor" viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V80a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,172Z"></path></svg>
+                                </button>
+                                <button id="btnCancelar-${p.id}" data-tooltip="Cancelar proposta" class="icon-btn shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-stone-200 text-red-500 hover:border-red-400 hover:bg-red-50 transition-colors">
+                                    <svg width="18" height="18" fill="currentColor" viewBox="0 0 256 256"><path d="M165.66,101.66,139.31,128l26.35,26.34a8,8,0,0,1-11.32,11.32L128,139.31l-26.34,26.35a8,8,0,0,1-11.32-11.32L116.69,128,90.34,101.66a8,8,0,0,1,11.32-11.32L128,116.69l26.34-26.35a8,8,0,0,1,11.32,11.32ZM128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Z"></path></svg>
+                                </button>
+                                <button id="btnCompliance-${p.id}" data-tooltip="Validar Compliance" class="icon-btn shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-stone-200 text-green-600 hover:border-green-400 hover:bg-green-50 transition-colors">
+                                    <svg width="18" height="18" fill="currentColor" viewBox="0 0 256 256"><path d="M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,1,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34ZM128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Z"></path></svg>
+                                </button>
+                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 256 256" class="text-stone-300 shrink-0 ml-1"><path d="M221.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L196.69,136H40a8,8,0,0,1,0-16H196.69L138.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,221.66,133.66Z"></path></svg>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                row.querySelector(`#btnLinkFormalizacao-${p.id}`).addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    copiarLinkFormalizacao(p);
+                });
+
+                row.querySelector(`#btnChecklist-${p.id}`).addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    abrirModalChecklist(p.id);
+                });
+
+                row.querySelector(`#btnObservacao-${p.id}`).addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    abrirModalObservacao(p.id, filaKey, p);
+                });
+
+                row.querySelector(`#btnPendenciar-${p.id}`).addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    abrirModalPendencia(p.id);
+                });
+
+                row.querySelector(`#btnCompliance-${p.id}`).addEventListener('click', (ev) => {
+                    ev.stopPropagation(); // não deve abrir a proposta ao clicar nesse botão
+                    validarCompliance(p.id);
+                });
+
+                row.querySelector(`#btnCancelar-${p.id}`).addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    abrirModalCancelamento(p.id);
+                });
+
+                const btnRemover = row.querySelector('.btn-remover-marcacao');
+                if (btnRemover) {
+                    btnRemover.addEventListener('click', (ev) => {
+                        ev.stopPropagation();
+                        removerMarcacaoAdmin(btnRemover.dataset.opId);
+                    });
+                }
+
+                body.appendChild(row);
+            });
+
+            const totalPag = data.pageCount || 1;
+            const pagAtual = page;
+            const pagDiv = document.getElementById('paginacao');
+            pagDiv.innerHTML = `
+                <span class="text-stone-400">Página ${pagAtual} de ${totalPag} · ${data.rowCount ?? result.length} propostas</span>
+                <div class="flex gap-2">
+                    <button ${pagAtual <= 1 ? 'disabled' : ''} onclick="mudarPagina(-1)" class="px-3 py-1.5 border border-stone-200 rounded-lg text-xs font-semibold text-stone-600 disabled:opacity-40 hover:border-[#E35205] hover:text-[#E35205]">Anterior</button>
+                    <button ${pagAtual >= totalPag ? 'disabled' : ''} onclick="mudarPagina(1)" class="px-3 py-1.5 border border-stone-200 rounded-lg text-xs font-semibold text-stone-600 disabled:opacity-40 hover:border-[#E35205] hover:text-[#E35205]">Próxima</button>
+                </div>
+            `;
+        }
+
+        function mudarPagina(delta) {
+            const chave = chaveAtual();
+            state.paginaPorFila[chave] = (state.paginaPorFila[chave] || 1) + delta;
+            buscarPropostas();
+        }
+
+        // ===================== PAINEL: COLABORADORES POR FILA =====================
+        // ===================== DASHBOARD DE ATUAÇÃO (restrito) =====================
+        // Deixa laranja só o item de menu correspondente à tela atualmente visível
+        function atualizarMenuAtivo(ativo) {
+            const classesAtivo = ['text-[#E35205]', 'font-semibold'];
+            const classesInativo = ['text-stone-600'];
+
+            const navFila = document.getElementById('navMesaAnalise');
+            const navDash = document.getElementById('navDashboardAtuacao');
+
+            navFila.classList.remove(...classesAtivo, ...classesInativo);
+            navDash.classList.remove(...classesAtivo, ...classesInativo);
+
+            navFila.classList.add(...(ativo === 'fila' ? classesAtivo : classesInativo));
+            navDash.classList.add(...(ativo === 'dashboard' ? classesAtivo : classesInativo));
+        }
+
+        function abrirDashboardAtuacao() {
+            if (!podeEditarFiltros()) return;
+            document.getElementById('viewFila').classList.add('hidden');
+            document.getElementById('viewDashboardAtuacao').classList.remove('hidden');
+            atualizarMenuAtivo('dashboard');
+            if (!document.getElementById('dashDataInicio').value) {
+                document.getElementById('dashDataInicio').value = primeiroDiaDoMesLocal();
+                document.getElementById('dashDataFim').value = todayLocal();
+            }
+            const selectFila = document.getElementById('dashFiltroFila');
+            if (selectFila.options.length <= 1) {
+                Object.values(FILAS).forEach(f => {
+                    const opt = document.createElement('option');
+                    opt.value = f.nome; opt.textContent = f.nome;
+                    selectFila.appendChild(opt);
+                });
+            }
+            carregarDashboardAtuacao();
+        }
+
+        function voltarParaFila() {
+            document.getElementById('viewDashboardAtuacao').classList.add('hidden');
+            document.getElementById('viewFila').classList.remove('hidden');
+            atualizarMenuAtivo('fila');
+        }
+
+        // Busca a aba "Atuacoes" da planilha compartilhada, com tempo limite de 20s
+        // (o Apps Script pode ocasionalmente demorar ou travar; preferimos avisar em vez de deixar a tela travada em silêncio)
+        async function carregarRegistrosAtuacao() {
+            const url = appsScriptUrl();
+            if (!url) return [];
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 20000);
+            try {
+                const res = await fetch(`${url}?aba=atuacoes`, { method: 'GET', signal: controller.signal });
+                const json = await res.json();
+                return json.ok ? json.data : [];
+            } catch (e) {
+                if (e.name === 'AbortError') {
+                    console.warn('Timeout ao carregar atuações (20s sem resposta do Apps Script).');
+                    throw new Error('TIMEOUT_ATUACOES');
+                }
+                console.warn('Falha ao carregar atuações:', e.message);
+                return [];
+            } finally {
+                clearTimeout(timeoutId);
+            }
+        }
+
+        function calcularEstatisticasAtuacao(registros) {
+            const porAnalista = {};
+
+            registros.forEach(r => {
+                const nome = r.usuarioNome || 'Desconhecido';
+                if (!porAnalista[nome]) {
+                    porAnalista[nome] = { compliance: 0, cancelamento: 0, pendencia: 0, observacao: 0, duracoesMin: [] };
+                }
+                const item = porAnalista[nome];
+
+                if (r.tipoAcao === 'compliance') item.compliance++;
+                else if (r.tipoAcao === 'cancelamento') item.cancelamento++;
+                else if (r.tipoAcao === 'pendencia') item.pendencia++;
+                else if (r.tipoAcao === 'observacao') item.observacao++;
+
+                if (r.horaEntrada && r.horaConclusao) {
+                    const dur = (new Date(r.horaConclusao).getTime() - new Date(r.horaEntrada).getTime()) / 60000;
+                    if (dur >= 0 && isFinite(dur)) item.duracoesMin.push(dur);
+                }
+            });
+
+            return porAnalista;
+        }
+
+        function mediaMinutos(lista) {
+            if (!lista || lista.length === 0) return null;
+            const soma = lista.reduce((a, b) => a + b, 0);
+            return soma / lista.length;
+        }
+
+        function fmtMinutos(min) {
+            if (min == null) return '—';
+            const totalSegundos = Math.round(min * 60);
+            const h = Math.floor(totalSegundos / 3600);
+            const m = Math.floor((totalSegundos % 3600) / 60);
+            const s = totalSegundos % 60;
+            if (h > 0) return `${h}h ${m}min`;
+            if (m > 0) return `${m}min ${s}s`;
+            return `${s}s`;
+        }
+
+        async function carregarDashboardAtuacao() {
+            const corpo = document.getElementById('corpoDashboardAtuacao');
+            corpo.innerHTML = `<div class="flex items-center gap-2 text-stone-400"><svg class="spin" width="14" height="14" fill="currentColor" viewBox="0 0 256 256"><path d="M232,128a104,104,0,0,1-208,0c0-41,23.81-78.36,60.66-95.27a8,8,0,0,1,6.68,14.54C60.15,61.59,40,93.27,40,128a88,88,0,0,0,176,0c0-34.73-20.15-66.41-51.34-80.73a8,8,0,0,1,6.68-14.54C215.19,49.64,232,87,232,128Z"></path></svg>Carregando atuações... (pode levar alguns segundos)</div>`;
+
+            let todosRegistros;
+            try {
+                todosRegistros = await carregarRegistrosAtuacao();
+            } catch (e) {
+                if (e.message === 'TIMEOUT_ATUACOES') {
+                    corpo.innerHTML = `
+                        <div class="bg-amber-50 border border-amber-200 rounded-xl p-5 text-sm text-amber-800">
+                            <strong>A planilha demorou demais para responder (mais de 20s).</strong> Isso costuma ser instabilidade temporária do Google Apps Script — não é um problema com os dados.
+                            <div class="mt-3">
+                                <button onclick="carregarDashboardAtuacao()" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-semibold transition-colors">Tentar de novo</button>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+                todosRegistros = [];
+            }
+
+            // Filtra pela data de conclusão, respeitando os campos de data do topo do dashboard
+            const dataInicioStr = document.getElementById('dashDataInicio').value;
+            const dataFimStr = document.getElementById('dashDataFim').value;
+            const inicioMs = dataInicioStr ? new Date(dataInicioStr + 'T00:00:00').getTime() : -Infinity;
+            const fimMs = dataFimStr ? new Date(dataFimStr + 'T23:59:59').getTime() : Infinity;
+            const filaFiltro = document.getElementById('dashFiltroFila').value;
+
+            const registros = todosRegistros.filter(r => {
+                if (!r.horaConclusao) return false;
+                const t = new Date(r.horaConclusao).getTime();
+                if (t < inicioMs || t > fimMs) return false;
+                // Registros antigos sem valor na coluna Fila aparecem em qualquer filtro de fila selecionado
+                if (filaFiltro && r.fila && r.fila !== filaFiltro) return false;
+                return true;
+            });
+
+            state.registrosAtuacaoFiltrados = registros; // usado pelo painel individual por analista
+
+            if (registros.length === 0) {
+                corpo.innerHTML = `<p class="text-stone-400">Nenhuma atuação registrada no período selecionado.</p>`;
+                popularSelectAnalistas([]);
+                document.getElementById('painelAnalistaIndividual').innerHTML = '';
+                return;
+            }
+
+            const porAnalista = calcularEstatisticasAtuacao(registros);
+            const nomes = Object.keys(porAnalista).sort();
+            popularSelectAnalistas(nomes);
+
+            // Totais gerais (soma de todos os analistas)
+            const geral = { compliance: 0, cancelamento: 0, pendencia: 0, observacao: 0, duracoesMin: [] };
+            nomes.forEach(nome => {
+                const item = porAnalista[nome];
+                geral.compliance += item.compliance;
+                geral.cancelamento += item.cancelamento;
+                geral.pendencia += item.pendencia;
+                geral.observacao += item.observacao;
+                geral.duracoesMin = geral.duracoesMin.concat(item.duracoesMin);
+            });
+
+            function linhaTabela(nome, item, destaque) {
+                const total = item.compliance + item.cancelamento + item.pendencia + item.observacao;
+                const media = mediaMinutos(item.duracoesMin);
+                return `
+                    <tr class="${destaque ? 'bg-orange-50 font-bold' : ''}">
+                        <td class="py-3 px-4 ${destaque ? 'text-[#E35205]' : 'text-stone-700 font-semibold'}">${nome}</td>
+                        <td class="py-3 px-4 text-center code-font text-green-700">${item.compliance}</td>
+                        <td class="py-3 px-4 text-center code-font text-red-600">${item.cancelamento}</td>
+                        <td class="py-3 px-4 text-center code-font text-amber-600">${item.pendencia}</td>
+                        <td class="py-3 px-4 text-center code-font text-blue-600">${item.observacao}</td>
+                        <td class="py-3 px-4 text-center code-font text-stone-600">${fmtMinutos(media)}</td>
+                        <td class="py-3 px-4 text-center code-font font-bold text-stone-800">${total}</td>
+                    </tr>
+                `;
+            }
+
+            let html = `
+                <div class="bg-white border border-stone-200 rounded-2xl shadow-sm overflow-hidden">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-stone-50 border-b border-stone-200 text-stone-500 text-xs uppercase font-bold">
+                            <tr>
+                                <th class="py-3 px-4">Analista</th>
+                                <th class="py-3 px-4 text-center">Compliance validado</th>
+                                <th class="py-3 px-4 text-center">Cancelamentos</th>
+                                <th class="py-3 px-4 text-center">Pendências</th>
+                                <th class="py-3 px-4 text-center">Observações</th>
+                                <th class="py-3 px-4 text-center">Tempo médio</th>
+                                <th class="py-3 px-4 text-center">Total propostas</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-stone-100">
+                            ${linhaTabela('GERAL (todos os analistas)', geral, true)}
+                            ${nomes.map(nome => linhaTabela(nome, porAnalista[nome], false)).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-xs text-stone-400 mt-3">Tempo médio calculado como diferença entre a hora em que a proposta foi marcada "em análise" e a hora da conclusão (compliance, pendência, cancelamento ou observação). Baseado em ${registros.length} registro(s) na planilha.</p>
+            `;
+
+            corpo.innerHTML = html;
+        }
+
+        // ===================== PAINEL INDIVIDUAL POR ANALISTA =====================
+        function popularSelectAnalistas(nomes) {
+            const select = document.getElementById('selectAnalistaDashboard');
+            const selecionadoAntes = select.value;
+            select.innerHTML = `<option value="">Selecione um analista...</option>` +
+                nomes.map(n => `<option value="${n}">${n}</option>`).join('');
+            if (nomes.includes(selecionadoAntes)) {
+                select.value = selecionadoAntes;
+                renderPainelAnalista();
+            }
+        }
+
+        function renderPainelAnalista() {
+            const nome = document.getElementById('selectAnalistaDashboard').value;
+            const painel = document.getElementById('painelAnalistaIndividual');
+
+            if (!nome) { painel.innerHTML = ''; return; }
+
+            const registros = (state.registrosAtuacaoFiltrados || []).filter(r => r.usuarioNome === nome);
+            const stats = calcularEstatisticasAtuacao(registros)[nome] || { compliance: 0, cancelamento: 0, pendencia: 0, observacao: 0, duracoesMin: [] };
+            const total = stats.compliance + stats.cancelamento + stats.pendencia + stats.observacao;
+            const media = mediaMinutos(stats.duracoesMin);
+
+            const barras = [
+                { label: 'Compliance validado', valor: stats.compliance, cor: 'bg-green-500' },
+                { label: 'Cancelamentos', valor: stats.cancelamento, cor: 'bg-red-500' },
+                { label: 'Pendências', valor: stats.pendencia, cor: 'bg-amber-500' },
+                { label: 'Observações', valor: stats.observacao, cor: 'bg-blue-500' }
+            ];
+            const maiorValor = Math.max(1, ...barras.map(b => b.valor));
+
+            painel.innerHTML = `
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                    <div class="bg-white border border-stone-200 rounded-xl p-4">
+                        <p class="text-xs text-stone-400 uppercase font-bold">Total propostas</p>
+                        <p class="text-2xl font-bold text-stone-800 code-font mt-1">${total}</p>
+                    </div>
+                    <div class="bg-white border border-stone-200 rounded-xl p-4">
+                        <p class="text-xs text-stone-400 uppercase font-bold">Compliance</p>
+                        <p class="text-2xl font-bold text-green-600 code-font mt-1">${stats.compliance}</p>
+                    </div>
+                    <div class="bg-white border border-stone-200 rounded-xl p-4">
+                        <p class="text-xs text-stone-400 uppercase font-bold">Cancelamentos</p>
+                        <p class="text-2xl font-bold text-red-600 code-font mt-1">${stats.cancelamento}</p>
+                    </div>
+                    <div class="bg-white border border-stone-200 rounded-xl p-4">
+                        <p class="text-xs text-stone-400 uppercase font-bold">Pendências</p>
+                        <p class="text-2xl font-bold text-amber-600 code-font mt-1">${stats.pendencia}</p>
+                    </div>
+                    <div class="bg-white border border-stone-200 rounded-xl p-4">
+                        <p class="text-xs text-stone-400 uppercase font-bold">Tempo médio</p>
+                        <p class="text-2xl font-bold text-stone-800 code-font mt-1">${fmtMinutos(media)}</p>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-stone-200 rounded-2xl shadow-sm p-6">
+                    <h3 class="font-bold text-stone-800 text-sm mb-4">Distribuição por tipo de atuação</h3>
+                    <div class="space-y-3">
+                        ${barras.map(b => `
+                            <div>
+                                <div class="flex items-center justify-between text-xs text-stone-500 mb-1">
+                                    <span>${b.label}</span>
+                                    <span class="code-font font-semibold text-stone-700">${b.valor}</span>
+                                </div>
+                                <div class="w-full h-3 bg-stone-100 rounded-full overflow-hidden">
+                                    <div class="h-full ${b.cor} rounded-full transition-all" style="width: ${(b.valor / maiorValor * 100).toFixed(1)}%"></div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        async function carregarColaboradoresPorFila() {
+            const out = document.getElementById('colabResultado');
+            out.innerHTML = `<div class="flex items-center gap-2 text-stone-400"><svg class="spin" width="14" height="14" fill="currentColor" viewBox="0 0 256 256"><path d="M232,128a104,104,0,0,1-208,0c0-41,23.81-78.36,60.66-95.27a8,8,0,0,1,6.68,14.54C60.15,61.59,40,93.27,40,128a88,88,0,0,0,176,0c0-34.73-20.15-66.41-51.34-80.73a8,8,0,0,1,6.68-14.54C215.19,49.64,232,87,232,128Z"></path></svg>Atualizando planilha de Em Análise...</div>`;
+
+            await carregarEmAnalise();
+            const entradas = Object.values(state.emAnalise);
+
+            if (entradas.length === 0) {
+                out.innerHTML = `<p class="text-stone-400">Nenhum colaborador está com uma proposta marcada como "em análise" agora.</p>`;
+                return;
+            }
+
+            entradas.sort((a, b) => a.usuarioNome.localeCompare(b.usuarioNome));
+
+            const autorizado = podeEditarFiltros();
+
+            let html = `<div class="space-y-3">`;
+            entradas.forEach(item => {
+                html += `
+                    <div class="border border-stone-200 rounded-xl p-3">
+                        <p class="font-semibold text-stone-700 text-sm">${item.usuarioNome}</p>
+                        <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-50 text-[#E35205] border border-orange-200">${item.fila}</span>
+                            <span class="code-font text-xs text-stone-500">#${item.operacaoId}</span>
+                        </div>
+                        <div class="flex items-center justify-between mt-1.5">
+                            <span class="text-xs text-stone-400">${minutosDesde(item.dataInicio)} min</span>
+                            ${autorizado ? `<button class="btn-remover-colab text-xs font-semibold text-red-500 hover:text-red-700" data-op-id="${item.operacaoId}">Remover</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+            html += `<p class="text-xs text-stone-400 mt-3">Baseado em quem marcou a proposta como "em análise" na planilha compartilhada — não é o responsável histórico da operação.</p>`;
+
+            out.innerHTML = html;
+
+            if (autorizado) {
+                out.querySelectorAll('.btn-remover-colab').forEach(btn => {
+                    btn.addEventListener('click', () => removerMarcacaoAdmin(btn.dataset.opId).then(carregarColaboradoresPorFila));
+                });
+            }
+        }
+
+        // ===================== INIT =====================
+        window.onload = () => {
+            if (tentarAutoLogin()) entrarNoApp();
+        };
+
+        // Fecha os dropdowns de filtro (Pendências / Tipo de Crédito) ao clicar fora deles
+        document.addEventListener('click', (ev) => {
+            ['detPendencias', 'detTipoCredito'].forEach(id => {
+                const det = document.getElementById(id);
+                if (det && det.open && !det.contains(ev.target)) {
+                    det.open = false;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
